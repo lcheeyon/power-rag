@@ -1,0 +1,123 @@
+{
+  "app": {
+    "name": "Power RAG",
+    "tagline": "Intelligent document Q&A with multi-LLM support"
+  },
+  "nav": {
+    "chat":     "Chat",
+    "database": "Database",
+    "admin":    "Admin",
+    "logout":   "Logout",
+    "language": "Language"
+  },
+  "sidebar": {
+    "knowledgeBase": "Knowledge Base",
+    "sources":       "Sources",
+    "noDocuments":   "No documents ingested yet. Upload files to get started.",
+    "uploadFiles":   "Upload Files",
+    "database":      "Database Tables",
+    "chunks":        "chunks"
+  },
+  "chat": {
+    "placeholder":       "Ask anything about your documents…",
+    "selectModel":       "Select Model",
+    "startConversation": "Start a conversation by asking a question.",
+    "thinking":          "Thinking…",
+    "cacheHit":          "Cached",
+    "retrieved":         "Retrieved",
+    "confidence":        "Confidence",
+    "sources":           "Sources",
+    "noSources":         "No sources available"
+  },
+  "model": {
+    "selector":   "Select LLM Model",
+    "providers": {
+      "CLAUDE":   "Anthropic Claude",
+      "GEMINI":   "Google Gemini",
+      "OLLAMA":   "Ollama (Local)"
+    },
+    "tiers": {
+      "powerful":  "Powerful",
+      "balanced":  "Balanced",
+      "fast":      "Fast",
+      "preview":   "Preview",
+      "code":      "Code"
+    }
+  },
+  "feedback": {
+    "title":         "Was this answer helpful?",
+    "thumbsUp":      "Helpful",
+    "thumbsDown":    "Not helpful",
+    "addComment":    "Add a comment (optional)…",
+    "submit":        "Submit Feedback",
+    "submitted":     "Thanks for your feedback!",
+    "ratingLabel":   "Rate this answer"
+  },
+  "upload": {
+    "title":         "Upload Documents",
+    "dropzone":      "Drop files here or click to browse",
+    "supported":     "Supported: .java · .pdf · .xlsx · .docx · .pptx · .png · .jpg · .gif · .webp",
+    "uploading":     "Uploading…",
+    "success":       "File ingested successfully",
+    "error":         "Upload failed. Please try again."
+  },
+  "confidence": {
+    "high":   "High confidence",
+    "medium": "Medium confidence",
+    "low":    "Low confidence"
+  },
+  "login": {
+    "subtitle":           "Sign in to your account",
+    "username":           "Username",
+    "password":           "Password",
+    "usernamePlaceholder":"Enter your username",
+    "passwordPlaceholder":"Enter your password",
+    "signIn":             "Sign In",
+    "invalidCredentials": "Invalid username or password"
+  },
+  "admin": {
+    "title":        "Admin Dashboard",
+    "comingSoon":   "Admin features will be available in Phase 8.",
+    "interactions": "Interactions",
+    "feedback":     "Feedback",
+    "guardrails":   "Guardrail Flags",
+    "analytics":    "Analytics",
+    "cache":        "Cache Stats",
+    "export":       "Export CSV",
+    "refresh":      "Refresh",
+    "filters":      "Filters",
+    "columns": {
+      "id":           "ID",
+      "query":        "Query",
+      "model":        "Model",
+      "rating":       "Rating",
+      "flagged":      "Flagged",
+      "language":     "Lang",
+      "cacheHit":     "Cache",
+      "confidence":   "Confidence",
+      "createdAt":    "Date"
+    }
+  },
+  "sql": {
+    "title":          "Database Query",
+    "subtitle":       "Ask questions in natural language — Power RAG translates them to SQL and runs them against the grants database.",
+    "placeholder":    "e.g. Show all approved applications with their amounts",
+    "run":            "Run Query",
+    "running":        "Running…",
+    "samples":        "Try a sample question",
+    "noResults":      "Enter a question to query the database.",
+    "generatedSql":   "Generated SQL",
+    "results":        "Results",
+    "clarification":  "Clarification needed",
+    "executionError": "Execution error",
+    "duration":       "Completed in {{ms}} ms",
+    "rowCount":       "{{count}} row(s)",
+    "empty":          "Query returned no rows."
+  },
+  "errors": {
+    "generic":       "Something went wrong. Please try again.",
+    "unauthorized":  "Please sign in to continue.",
+    "forbidden":     "You do not have permission to access this page.",
+    "guardrailBlock":"This request was blocked by content guidelines."
+  }
+}

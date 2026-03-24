@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background:  10 10 15;
+    --surface:     18 18 26;
+    --border:      30 30 46;
+    --accent:      99 102 241;
+    --text-primary: 241 245 249;
+    --text-muted:   100 116 139;
+  }
+
+  * {
+    @apply border-[#1E1E2E];
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-[#0A0A0F] text-slate-100 font-sans antialiased;
+    background-image: radial-gradient(
+      ellipse 80% 80% at 50% -20%,
+      rgba(99, 102, 241, 0.06),
+      transparent
+    );
+    min-height: 100vh;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar        { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track  { background: #12121A; }
+  ::-webkit-scrollbar-thumb  { background: #1E1E2E; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #6366F1; }
+}
+
+@layer components {
+  /* Glass morphism card */
+  .glass-card {
+    @apply bg-[#12121A]/80 backdrop-blur-sm border border-[#1E1E2E] rounded-xl;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent;
+  }
+
+  /* Animated badge */
+  .status-badge {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  /* Chat bubble base */
+  .chat-bubble-ai {
+    @apply bg-[#12121A] border border-[#1E1E2E] rounded-2xl rounded-tl-sm p-4 max-w-[85%];
+  }
+
+  .chat-bubble-user {
+    @apply bg-indigo-600 text-white rounded-2xl rounded-tr-sm p-4 max-w-[85%] ml-auto;
+  }
+}
+
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+  .animation-delay-200 { animation-delay: 200ms; }
+  .animation-delay-400 { animation-delay: 400ms; }
+}

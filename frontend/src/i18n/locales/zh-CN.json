@@ -1,0 +1,123 @@
+{
+  "app": {
+    "name": "Power RAG",
+    "tagline": "支持多种大语言模型的智能文档问答系统"
+  },
+  "nav": {
+    "chat":     "对话",
+    "database": "数据库",
+    "admin":    "管理",
+    "logout":   "退出登录",
+    "language": "语言"
+  },
+  "sidebar": {
+    "knowledgeBase": "知识库",
+    "sources":       "来源",
+    "noDocuments":   "尚未上传任何文档，请上传文件以开始使用。",
+    "uploadFiles":   "上传文件",
+    "database":      "数据库表",
+    "chunks":        "个片段"
+  },
+  "chat": {
+    "placeholder":       "询问有关您文档的任何问题…",
+    "selectModel":       "选择模型",
+    "startConversation": "请提问以开始对话。",
+    "thinking":          "思考中…",
+    "cacheHit":          "已缓存",
+    "retrieved":         "已检索",
+    "confidence":        "置信度",
+    "sources":           "来源",
+    "noSources":         "暂无来源"
+  },
+  "model": {
+    "selector":   "选择大语言模型",
+    "providers": {
+      "CLAUDE":   "Anthropic Claude",
+      "GEMINI":   "Google Gemini",
+      "OLLAMA":   "Ollama（本地）"
+    },
+    "tiers": {
+      "powerful":  "强大",
+      "balanced":  "均衡",
+      "fast":      "快速",
+      "preview":   "预览版",
+      "code":      "代码专用"
+    }
+  },
+  "feedback": {
+    "title":         "这个回答对您有帮助吗？",
+    "thumbsUp":      "有帮助",
+    "thumbsDown":    "没有帮助",
+    "addComment":    "添加评论（可选）…",
+    "submit":        "提交反馈",
+    "submitted":     "感谢您的反馈！",
+    "ratingLabel":   "为此回答评分"
+  },
+  "upload": {
+    "title":         "上传文档",
+    "dropzone":      "将文件拖放到此处，或点击浏览",
+    "supported":     "支持格式：.java · .pdf · .xlsx · .docx · .pptx · .png · .jpg · .gif · .webp",
+    "uploading":     "上传中…",
+    "success":       "文件摄取成功",
+    "error":         "上传失败，请重试。"
+  },
+  "confidence": {
+    "high":   "高置信度",
+    "medium": "中等置信度",
+    "low":    "低置信度"
+  },
+  "login": {
+    "subtitle":           "登录您的账户",
+    "username":           "用户名",
+    "password":           "密码",
+    "usernamePlaceholder":"请输入用户名",
+    "passwordPlaceholder":"请输入密码",
+    "signIn":             "登录",
+    "invalidCredentials": "用户名或密码错误"
+  },
+  "admin": {
+    "title":        "管理员仪表板",
+    "comingSoon":   "管理员功能将在第8阶段提供。",
+    "interactions": "交互记录",
+    "feedback":     "用户反馈",
+    "guardrails":   "安全审查标记",
+    "analytics":    "数据分析",
+    "cache":        "缓存统计",
+    "export":       "导出 CSV",
+    "refresh":      "刷新",
+    "filters":      "筛选",
+    "columns": {
+      "id":           "ID",
+      "query":        "查询",
+      "model":        "模型",
+      "rating":       "评分",
+      "flagged":      "标记",
+      "language":     "语言",
+      "cacheHit":     "缓存",
+      "confidence":   "置信度",
+      "createdAt":    "日期"
+    }
+  },
+  "sql": {
+    "title":          "数据库查询",
+    "subtitle":       "用自然语言提问，Power RAG 将自动转换为 SQL 并查询授权数据库。",
+    "placeholder":    "例如：显示所有已批准的申请及其金额",
+    "run":            "执行查询",
+    "running":        "查询中…",
+    "samples":        "尝试示例问题",
+    "noResults":      "请输入问题以查询数据库。",
+    "generatedSql":   "生成的 SQL",
+    "results":        "查询结果",
+    "clarification":  "需要更多信息",
+    "executionError": "执行错误",
+    "duration":       "耗时 {{ms}} 毫秒",
+    "rowCount":       "{{count}} 行",
+    "empty":          "查询未返回任何结果。"
+  },
+  "errors": {
+    "generic":       "出现错误，请重试。",
+    "unauthorized":  "请登录后继续。",
+    "forbidden":     "您没有访问此页面的权限。",
+    "guardrailBlock":"此请求因违反内容规范而被拦截。"
+  }
+}

@@ -1,0 +1,147 @@
+spring:
+  application:
+    name: power-rag
+
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
+
+  # ── Datasource ──────────────────────────────────────────────
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/powerrag}
+    username: ${SPRING_DATASOURCE_USERNAME:powerrag}
+    password: ${SPRING_DATASOURCE_PASSWORD:powerrag_secret}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  # ── Flyway ───────────────────────────────────────────────────
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false
+
+  # ── Redis ────────────────────────────────────────────────────
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      timeout: 5000ms
+
+  # ── Spring AI ────────────────────────────────────────────────
+  ai:
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:}
+      chat:
+        options:
+          model: claude-sonnet-4-6
+          max-tokens: 8096
+          temperature: 0.7
+
+    google:
+      genai:
+        api-key: ${GOOGLE_API_KEY:}
+        chat:
+          options:
+            model: gemini-2.5-flash
+            temperature: 0.7
+
+    retry:
+      max-attempts: 1        # fail-fast — GuardrailService catches and allows through
+      on-client-errors: false
+
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        options:
+          model: qwen2.5-coder:7b
+          temperature: 0.7
+      embedding:
+        options:
+          model: nomic-embed-text
+
+    # Qdrant vector store (knowledge base)
+    vectorstore:
+      qdrant:
+        host: ${QDRANT_HOST:localhost}
+        port: ${QDRANT_PORT:6334}
+        collection-name: power_rag_docs
+        initialize-schema: true
+        dimensions: 768
+
+# ── Actuator ─────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: always
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: Power RAG
+    version: 1.0.0-SNAPSHOT
+    description: RAG system with multi-LLM support
+
+# ── Application Properties ────────────────────────────────────
+powerrag:
+  jwt:
+    secret: ${JWT_SECRET:change-me-in-production-min-32-chars!!}
+    expiration-ms: 86400000   # 24h
+
+  upload:
+    storage-path: ${UPLOAD_STORAGE_PATH:./uploads}
+
+  ingestion:
+    chunk-size: 512
+    chunk-overlap: 64
+
+  rag:
+    top-k: 10
+    max-context-chars: 24000
+
+  models:
+    claude:
+      powerful: claude-opus-4-6
+      balanced: claude-sonnet-4-6
+      fast: claude-haiku-4-5-20251001
+    gemini:
+      powerful: gemini-2.5-pro
+      balanced: gemini-2.5-flash
+      fast: gemini-2.5-flash-lite
+      preview: gemini-3.1-pro-preview
+    ollama:
+      coder: qwen2.5-coder:7b
+      deep-coder: deepseek-coder-v2:16b
+      guard: llama-guard3:8b
+    cache:
+      similarity-threshold: 0.92
+      ttl-seconds: 86400
+
+  text-to-sql:
+    allowed-tables: documents,interactions,feedback,grant_programs,grant_applicants,grant_applications,grant_reviewers,grant_reviews,grant_disbursements
+
+logging:
+  level:
+    com.powerrag: INFO
+    org.springframework.ai: INFO
+    org.springframework.security: WARN
+    org.flywaydb: INFO

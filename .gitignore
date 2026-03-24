@@ -1,0 +1,53 @@
+# ── Environment / Secrets ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Backend (Maven / Java) ───────────────────────────────────────────────────
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/*.class
+backend/**/*.class
+*.jar
+*.war
+!**/test-resources/**
+
+# ── Frontend (Node / Vite) ───────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ── Test Reports ─────────────────────────────────────────────────────────────
+frontend/test-reports/
+frontend/coverage/
+frontend/playwright-report/
+frontend/playwright/.cache/
+backend/target/surefire-reports/
+backend/target/cucumber-reports/
+backend/target/site/
+
+# ── IDE ──────────────────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# ── Docker ───────────────────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ── Uploaded files (runtime data) ────────────────────────────────────────────
+uploads/
+
+# ── SSL certificates (generated locally, not committed) ──────────────────────
+ssl/*.crt
+ssl/*.key
+ssl/*.pem
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── Claude Code settings (local machine-specific) ────────────────────────────
+.claude/

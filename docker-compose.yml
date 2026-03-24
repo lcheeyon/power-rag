@@ -1,0 +1,137 @@
+version: '3.9'
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: powerrag-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: powerrag
+      POSTGRES_USER: ${PG_USER:-powerrag}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-powerrag_secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-powerrag} -d powerrag"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis Stack (semantic cache + vector search) ────────────────────────────
+  redis-stack:
+    image: redis/redis-stack:7.4.0-v3
+    container_name: powerrag-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+      - "8001:8001"   # RedisInsight UI
+    volumes:
+      - redis_data:/data
+    environment:
+      REDIS_ARGS: "--save 60 1 --appendonly yes"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Qdrant Vector Database ──────────────────────────────────────────────────
+  qdrant:
+    image: qdrant/qdrant:v1.13.4
+    container_name: powerrag-qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"   # REST API
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__GRPC_PORT: 6334
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:6333/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  # ── Ollama (local LLM + embeddings) ────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: powerrag-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/version || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+    # Uncomment for GPU support:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # ── Spring Boot Backend ─────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: powerrag-backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/powerrag
+      SPRING_DATASOURCE_USERNAME: ${PG_USER:-powerrag}
+      SPRING_DATASOURCE_PASSWORD: ${PG_PASSWORD:-powerrag_secret}
+      SPRING_DATA_REDIS_HOST: redis-stack
+      SPRING_DATA_REDIS_PORT: 6379
+      QDRANT_HOST: qdrant
+      QDRANT_PORT: 6334
+      OLLAMA_BASE_URL: http://ollama:11434
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-min-32-chars!!}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis-stack:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ── React Frontend ──────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: powerrag-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080
+    depends_on:
+      - backend
+
+volumes:
+  pg_data:
+  redis_data:
+  qdrant_data:
+  ollama_models:

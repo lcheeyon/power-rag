@@ -1,0 +1,51 @@
+# Test profile – Testcontainers provides the real DB and Redis.
+# Spring AI LLM calls are mocked in tests; no real API keys required.
+spring:
+  autoconfigure:
+    exclude:
+      # Qdrant/Redis vector stores try to connect at startup – skip in unit/integration tests.
+      # QdrantConnectivityTest has its own @DynamicPropertySource + container setup.
+      - org.springframework.ai.vectorstore.qdrant.autoconfigure.QdrantVectorStoreAutoConfiguration
+      - org.springframework.ai.autoconfigure.vectorstore.qdrant.QdrantVectorStoreAutoConfiguration
+
+  ai:
+    anthropic:
+      api-key: test-key-not-real
+      chat:
+        options:
+          model: claude-haiku-4-5-20251001
+    vertex:
+      ai:
+        gemini:
+          project-id: test-project
+          chat:
+            options:
+              model: gemini-2.5-flash-lite
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: nomic-embed-text
+    vectorstore:
+      qdrant:
+        initialize-schema: true
+
+  flyway:
+    enabled: true
+    validate-on-migrate: false  # allow retrying previously-failed migrations without checksum mismatch
+
+  jpa:
+    show-sql: true
+
+powerrag:
+  semantic-cache:
+    enabled: false   # Redis Stack not available in test containers (plain Redis used)
+  jwt:
+    secret: test-secret-key-min-32-chars-ok!!
+    expiration-ms: 3600000
+
+logging:
+  level:
+    com.powerrag: DEBUG
+    org.springframework.security: DEBUG
+    org.testcontainers: INFO
