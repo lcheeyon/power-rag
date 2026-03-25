@@ -692,8 +692,8 @@ start training/index.html         # Windows
 xdg-open training/index.html      # Linux
 ```
 
-Or browse it directly on GitHub:
-[**training/index.html**](https://github.com/lcheeyon/power-rag/blob/main/training/index.html)
+Or open the rendered course directly in your browser:
+[**🎓 Open Training Materials**](https://lcheeyon.github.io/power-rag/training/index.html)
 
 ### Course Structure
 
