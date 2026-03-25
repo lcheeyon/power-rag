@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security &amp; JWT — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html" class="active"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 7 — Production Concerns
+      <span>›</span> Security &amp; JWT
+    </div>
+
+    <h1>Security with Spring Security + JWT</h1>
+    <div class="meta">Module 7 · ~10 min read</div>
+
+    <div class="concept-box">
+      JWT (JSON Web Token) authentication is stateless — the server stores no session data. Each request carries a self-contained, signed token. Spring Security validates the token on every request via a custom filter inserted before the standard security chain.
+    </div>
+
+    <h2>Filter Chain Order</h2>
+
+    <div class="ascii-diagram">
+  Incoming HTTP request
+        │
+        ▼
+  JwtAuthFilter (OncePerRequestFilter)
+  ├── Extract "Authorization: Bearer &lt;token&gt;" header
+  ├── Parse JWT → extract username
+  ├── Load UserDetails from database
+  ├── Validate token (signature, expiry)
+  └── Set Authentication in SecurityContextHolder
+        │
+        ▼
+  Spring Security filter chain
+  ├── /api/auth/**          → permitAll
+  ├── /actuator/health      → permitAll
+  ├── /api/admin/**         → hasRole("ADMIN")
+  └── everything else       → authenticated
+        │
+        ▼
+  Controller
+    </div>
+
+    <h2>JwtAuthFilter</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        JwtAuthFilter.java
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/security/JwtAuthFilter.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>public class JwtAuthFilter extends OncePerRequestFilter {
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, ...) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        String jwt = authHeader.substring(7);
+        String username = jwtService.extractUsername(jwt);
+        if (username != null &amp;&amp; SecurityContext has no auth) {
+            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            if (jwtService.isTokenValid(jwt, userDetails)) {
+                // Set authentication in SecurityContext
+            }
+        }
+        filterChain.doFilter(request, response);
+    }
+}</code></pre>
+    </div>
+
+    <h3>Key Implementation Points</h3>
+    <ul>
+      <li><code>OncePerRequestFilter</code> guarantees the filter runs exactly once per request, even in forward/include scenarios</li>
+      <li>If there is no Authorization header or it doesn't start with "Bearer ", the request continues unauthenticated — the security config will reject it if the endpoint requires authentication</li>
+      <li>The filter only sets authentication if <code>SecurityContext</code> has no existing authentication — this prevents overwriting authentication set by other means</li>
+    </ul>
+
+    <h2>SecurityConfig — Role-Based Access</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        SecurityConfig.java — authorization rules
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/config/SecurityConfig.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>.authorizeHttpRequests(auth -&gt; auth
+    .requestMatchers("/api/auth/**", "/actuator/health").permitAll()
+    .requestMatchers("/api/admin/**").hasRole("ADMIN")
+    .anyRequest().authenticated())</code></pre>
+    </div>
+
+    <h2>Role Hierarchy</h2>
+    <table>
+      <thead>
+        <tr><th>Role</th><th>Capabilities</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>USER</code></td>
+          <td>Ask questions, upload documents to their own workspace, view their own history</td>
+        </tr>
+        <tr>
+          <td><code>ADMIN</code></td>
+          <td>All USER capabilities + manage all documents, view all users, access admin endpoints</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="tip">JWT is stateless — no session storage needed. Token expiry is set to 24 hours. For high-security deployments, combine short-lived access tokens (15 min) with a refresh token flow. Power RAG uses a single 24h token for simplicity.</div>
+
+    <h2>JWT Token Structure</h2>
+    <p>A JWT has three Base64url-encoded parts separated by dots:</p>
+    <ul>
+      <li><strong>Header</strong> — algorithm (<code>HS256</code>) and token type</li>
+      <li><strong>Payload</strong> — claims: <code>sub</code> (username), <code>iat</code> (issued at), <code>exp</code> (expiry), roles</li>
+      <li><strong>Signature</strong> — HMAC-SHA256 of header + payload with the server secret key</li>
+    </ul>
+    <p>
+      The signature cannot be forged without the secret key. Tampering with the payload invalidates the signature and the token is rejected.
+    </p>
+
+    <div class="page-nav">
+      <a href="22-text-to-sql.html" class="btn-nav">← Previous</a>
+      <a href="24-database-migrations.html" class="btn-nav">Next →</a>
+    </div>
+  </div>
+</main>
+
+</body>
+</html>

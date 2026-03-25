@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ChatClient Basics — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html" class="active"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 2 — LLM Integration
+      <span>›</span> ChatClient Basics
+    </div>
+
+    <h1>ChatClient Basics</h1>
+    <div class="meta">Module 2 · ~8 min read</div>
+
+    <div class="concept-box">
+      <strong>ChatClient</strong> is the main Spring AI abstraction for sending prompts to an LLM. It uses a fluent builder API that separates prompt construction from execution, making the call chain easy to read and test.
+    </div>
+
+    <h2>Three Ways to Call</h2>
+    <p>Spring AI's <code>ChatClient</code> supports three response modes:</p>
+
+    <table>
+      <thead>
+        <tr><th>Call style</th><th>Returns</th><th>When to use</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>.call().content()</code></td>
+          <td><code>String</code></td>
+          <td>Simple text response — the most common case</td>
+        </tr>
+        <tr>
+          <td><code>.call().chatResponse()</code></td>
+          <td><code>ChatResponse</code></td>
+          <td>When you need metadata: token counts, finish reason, model name</td>
+        </tr>
+        <tr>
+          <td><code>.stream().content()</code></td>
+          <td><code>Flux&lt;String&gt;</code></td>
+          <td>Server-sent events / streaming to the frontend as chunks arrive</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Basic Usage</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        Basic ChatClient call
+      </div>
+      <pre><code>String answer = chatClient.prompt()
+    .user("What is RAG?")
+    .call()
+    .content();</code></pre>
+    </div>
+
+    <p>The fluent chain is:</p>
+    <ol>
+      <li><code>.prompt()</code> — starts a new request spec</li>
+      <li><code>.user("...")</code> — sets the user message</li>
+      <li><code>.call()</code> — executes the request (blocking)</li>
+      <li><code>.content()</code> — extracts the text from the response</li>
+    </ol>
+
+    <h2>System Prompt with defaultSystem()</h2>
+    <p>
+      A system prompt provides persistent instructions that apply to every call made through a <code>ChatClient</code> instance. Set it once at bean creation with <code>defaultSystem()</code>:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        Setting a default system prompt at build time
+      </div>
+      <pre><code>ChatClient client = ChatClient.builder(model)
+    .defaultSystem("You are a helpful assistant that always cites sources.")
+    .build();</code></pre>
+    </div>
+
+    <p>
+      You can also override the system prompt per-request using <code>.system("...")</code> in the fluent chain. This is useful when the same <code>ChatClient</code> bean serves different use cases with different instructions.
+    </p>
+
+    <h2>How Power RAG Uses ChatClient</h2>
+    <p>
+      In <code>RagService</code>, the actual LLM call happens in the <code>callLlm()</code> helper method. By the time this method is called, the prompt has already been fully assembled (context + question + instructions) by <code>MultilingualPromptBuilder</code>.
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        RagService.java — callLlm()
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/rag/service/RagService.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>String rawAnswer = baseSpec.user(userMessage).call().content();</code></pre>
+    </div>
+
+    <p>
+      Here <code>baseSpec</code> is a <code>ChatClient.ChatClientRequestSpec</code> that has already been configured with the correct provider, model options, and any images — see <a href="06-dynamic-model-routing.html">Topic 06</a> for how <code>baseSpec</code> is built dynamically.
+    </p>
+
+    <div class="tip">Prefer <code>.call().content()</code> for RAG responses — you want the complete answer before returning it to the cache and audit log. Use <code>.stream()</code> only when building a real-time chat UI that needs to display tokens as they arrive.</div>
+
+    <h2>ChatClient vs ChatModel</h2>
+    <p>
+      Spring AI has two layers: <code>ChatModel</code> (the low-level provider wrapper) and <code>ChatClient</code> (the high-level fluent API). You should always use <code>ChatClient</code> in application code:
+    </p>
+    <ul>
+      <li><code>ChatModel</code> — takes <code>Prompt</code> objects, returns <code>ChatResponse</code>. Lower-level, more verbose.</li>
+      <li><code>ChatClient</code> — fluent builder wrapping <code>ChatModel</code>. Supports <code>defaultSystem()</code>, <code>defaultOptions()</code>, advisors, and structured output. Use this.</li>
+    </ul>
+
+    <div class="page-nav">
+      <a href="03-project-setup.html" class="btn-nav">← Previous</a>
+      <a href="05-multiple-llm-providers.html" class="btn-nav">Next →</a>
+    </div>
+  </div>
+</main>
+
+</body>
+</html>

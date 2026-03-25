@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chunking Strategies — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html" class="active"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 3 — Document Ingestion
+      <span>›</span> Chunking Strategies
+    </div>
+
+    <h1>Chunking Strategies</h1>
+    <div class="meta">Module 3 · ~9 min read</div>
+
+    <div class="concept-box">
+      Chunking splits parsed document text into smaller pieces before embedding. The chunk size directly impacts retrieval quality: too large and the embedding captures too many topics; too small and the answer might be split across chunk boundaries. Power RAG uses a <strong>sliding window with overlap</strong> to balance precision and context continuity.
+    </div>
+
+    <h2>Why Chunking?</h2>
+    <p>
+      Embedding models have a maximum input length (typically 512–8192 tokens). A 50-page PDF cannot be embedded as a single unit — it must be split. Beyond the hard limit, smaller chunks produce better retrieval because:
+    </p>
+    <ul>
+      <li>Each chunk covers a narrower topic, making its embedding more specific</li>
+      <li>The similarity search returns chunks that are <em>precisely</em> about the query, not a page that happens to mention it once</li>
+      <li>The retrieved context is denser — more signal per character when injected into the LLM prompt</li>
+    </ul>
+
+    <h2>Size vs Context Trade-offs</h2>
+    <table>
+      <thead>
+        <tr><th>Chunk size</th><th>Retrieval precision</th><th>Answer completeness</th><th>Risk</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Very small (~50 words)</td>
+          <td>High</td>
+          <td>Low — answer may span multiple chunks</td>
+          <td>Fragmented answers; missing context</td>
+        </tr>
+        <tr>
+          <td>Medium (~256–512 words)</td>
+          <td>Good</td>
+          <td>Good</td>
+          <td>Balanced — recommended range</td>
+        </tr>
+        <tr>
+          <td>Large (~1000+ words)</td>
+          <td>Low</td>
+          <td>High</td>
+          <td>Embedding dilution; less focused retrieval</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Sliding Window with Overlap</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        SlidingWindowChunkingStrategy.java
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/ingestion/chunking/SlidingWindowChunkingStrategy.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>@Component
+public class SlidingWindowChunkingStrategy implements ChunkingStrategy {
+
+    // 512 words per chunk, 64 word overlap
+    public List&lt;Chunk&gt; chunk(List&lt;ParsedSection&gt; sections) {
+        for (ParsedSection section : sections) {
+            String[] words = section.getText().split("\\s+");
+            int step = Math.max(1, chunkSize - chunkOverlap); // = 448
+
+            for (int start = 0; start &lt; words.length; start += step) {
+                int end = Math.min(start + chunkSize, words.length);
+                String text = String.join(" ",
+                    Arrays.copyOfRange(words, start, end));
+                // store with metadata: chunk_index, start_line, ...
+            }
+        }
+    }
+}</code></pre>
+    </div>
+
+    <h2>Overlap Visualized</h2>
+    <p>
+      With <code>chunkSize=512</code> and <code>chunkOverlap=64</code>, the step is 448 words. Each consecutive chunk shares 64 words with the previous one:
+    </p>
+
+    <div class="ascii-diagram">
+  Word positions in document:
+
+  Chunk 1: [word  0  ...  word 511]
+  Chunk 2: [word 448 ...  word 959]   ← 64-word overlap with Chunk 1
+  Chunk 3: [word 896 ...  word 1407]  ← 64-word overlap with Chunk 2
+  Chunk 4: [word 1344 ... word 1855]  ← 64-word overlap with Chunk 3
+
+  Overlap zone (chunk 1 / chunk 2):
+  |-- chunk 1 exclusive --|-- overlap --|-- chunk 2 exclusive --|
+  word 0                word 448      word 511               word 959
+    </div>
+
+    <p>
+      The overlap ensures that sentences near chunk boundaries appear in at least two chunks. A question whose answer straddles the boundary will match one of the two chunks containing it.
+    </p>
+
+    <h2>Configuration</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        application.yml — chunking config
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/resources/application.yml" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>powerrag:
+  ingestion:
+    chunk-size: 512    # words per chunk
+    chunk-overlap: 64  # words of overlap between consecutive chunks</code></pre>
+    </div>
+
+    <div class="tip">The 512-word / 64-word overlap configuration works well as a starting point. If your documents are highly dense (legal contracts, technical specs), consider reducing chunk size to 256. If they are conversational (transcripts, emails), 512–768 works better.</div>
+
+    <div class="page-nav">
+      <a href="08-document-parsing.html" class="btn-nav">← Previous</a>
+      <a href="10-embeddings.html" class="btn-nav">Next →</a>
+    </div>
+  </div>
+</main>
+
+</body>
+</html>

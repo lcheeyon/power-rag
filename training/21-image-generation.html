@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Generation — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html" class="active"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 6 — Advanced Features
+      <span>›</span> Image Generation
+    </div>
+
+    <h1>Image Generation</h1>
+    <div class="meta">Module 6 · ~10 min read</div>
+
+    <div class="concept-box">
+      Power RAG integrates image generation as a first-class feature. When the user asks to "generate a picture of...", the system detects the intent, calls Google's Imagen 3 model, and returns the generated image as a base64 PNG — no RAG retrieval needed for generation requests.
+    </div>
+
+    <h2>Intent Detection</h2>
+    <p>
+      Image generation requests are detected by looking for the co-occurrence of a generation verb and an image noun in the query:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        ImageGenerationService.java — isImageGenerationRequest()
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/rag/service/ImageGenerationService.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>private static final Set&lt;String&gt; GEN_VERBS = Set.of(
+    "generate", "create", "draw", "paint", "make", "produce", "design");
+private static final Set&lt;String&gt; IMAGE_NOUNS = Set.of(
+    "image", "picture", "photo", "illustration", "artwork", "diagram");
+
+public boolean isImageGenerationRequest(String question) {
+    String lower = question.toLowerCase();
+    boolean hasVerb = GEN_VERBS.stream().anyMatch(lower::contains);
+    boolean hasNoun = IMAGE_NOUNS.stream().anyMatch(lower::contains);
+    return hasVerb &amp;&amp; hasNoun;
+}</code></pre>
+    </div>
+
+    <p>
+      Both conditions must be true. "Create a summary" has a verb but no image noun → not detected. "Show me an image" has a noun but no generation verb → not detected. "Draw a diagram of the architecture" → detected.
+    </p>
+
+    <h2>Imagen 3 via Google GenAI SDK</h2>
+    <p>
+      Power RAG uses the Google GenAI Java SDK directly (not Spring AI) for Imagen 3, as Spring AI 1.1.2 does not yet wrap Imagen natively.
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        ImageGenerationService.java — Imagen 3 call
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/rag/service/ImageGenerationService.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>com.google.genai.Client client = com.google.genai.Client.builder()
+    .apiKey(apiKey).build();
+
+GenerateImagesResponse resp = client.models.generateImages(
+    "imagen-3.0-generate-002", prompt,
+    GenerateImagesConfig.builder().numberOfImages(1).build());
+
+byte[] imageBytes = resp.generatedImages().get(0)
+    .image().get().imageBytes().get().toByteArray();
+return "data:image/png;base64," + Base64.getEncoder().encodeToString(imageBytes);</code></pre>
+    </div>
+
+    <h2>Gemini Flash Fallback</h2>
+    <p>
+      If Imagen 3 is unavailable or the API key lacks Imagen permissions, the service falls back to Gemini's multimodal output capability:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        ImageGenerationService.java — Gemini Flash image output fallback
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/rag/service/ImageGenerationService.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>GenerateContentConfig config = GenerateContentConfig.builder()
+    .responseModalities(List.of("IMAGE", "TEXT")).build();
+GenerateContentResponse resp = client.models.generateContent(
+    "gemini-2.0-flash-preview-image-generation", prompt, config);
+// Extract from resp.parts() → Part.inlineData → blob bytes</code></pre>
+    </div>
+
+    <h2>Pipeline Integration</h2>
+    <p>
+      Image generation detection happens at <strong>Stage 1.5</strong>, after the cache miss but before hybrid retrieval. This ordering is intentional:
+    </p>
+    <ul>
+      <li>Cache lookup first — a previously generated image for the same prompt can be served from cache</li>
+      <li>Before retrieval — no document retrieval is needed for image generation requests</li>
+      <li>The generated image is returned in the <code>generatedImageBase64</code> field of the response</li>
+    </ul>
+
+    <div class="tip">Imagen 3 produces significantly higher quality images than Gemini Flash's image output. Use Imagen 3 as the primary path and Gemini as a reliability fallback, not the other way around.</div>
+
+    <div class="page-nav">
+      <a href="20-multimodal-image-input.html" class="btn-nav">← Previous</a>
+      <a href="22-text-to-sql.html" class="btn-nav">Next →</a>
+    </div>
+  </div>
+</main>
+
+</body>
+</html>

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Semantic Caching — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html" class="active"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 5 — The Full Pipeline
+      <span>›</span> Semantic Caching
+    </div>
+
+    <h1>Semantic Caching</h1>
+    <div class="meta">Module 5 · ~10 min read</div>
+
+    <div class="concept-box">
+      A traditional cache keys on exact string equality — "What is RAG?" and "Can you explain RAG?" would be two cache misses. A semantic cache keys on <em>meaning</em>: if two questions have vectors with cosine similarity ≥ 0.92, they are considered equivalent and the cached answer is returned. This dramatically improves hit rates for paraphrased questions.
+    </div>
+
+    <h2>The SemanticCache Interface</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        SemanticCache.java
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/cache/SemanticCache.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>public interface SemanticCache {
+    Optional&lt;CacheHit&gt; lookup(String query, String language);
+    void store(String query, String language, String answer,
+               double confidence, List&lt;SourceRef&gt; sources, String modelId);
+}</code></pre>
+    </div>
+
+    <h2>How Redis Vector Search Works</h2>
+    <p>Power RAG uses <strong>Redis Stack 7.x</strong> with the <code>RedisVectorStore</code> from Spring AI. The lookup process:</p>
+
+    <div class="pipeline-step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">Embed the query</div>
+        <div class="step-desc">Call <code>nomic-embed-text</code> to convert the query string into a 768-dimensional float vector.</div>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">Search the Redis index</div>
+        <div class="step-desc">Search the <code>powerrag:cache:{lang}</code> Redis index for the nearest neighbour vector using cosine similarity.</div>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">Threshold check</div>
+        <div class="step-desc">If the nearest neighbour has cosine similarity ≥ 0.92 → return the cached answer as a <code>CacheHit</code>. Otherwise → miss, return <code>Optional.empty()</code>.</div>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <div class="step-title">Return or continue</div>
+        <div class="step-desc">On a HIT, the full pipeline (retrieval, LLM call, guardrails) is bypassed entirely. Typical latency: &lt;50ms vs 2–10s for a full call.</div>
+      </div>
+    </div>
+
+    <h2>Threshold Choice: 0.92</h2>
+    <p>
+      The 0.92 threshold is deliberately high. Consider these examples:
+    </p>
+    <ul>
+      <li><em>"Who is the CEO?"</em> and <em>"Who is the Chief Executive Officer?"</em> → cosine similarity ~0.97 → HIT (same meaning)</li>
+      <li><em>"Who is the CEO?"</em> and <em>"What year was the company founded?"</em> → cosine similarity ~0.61 → MISS (different topic)</li>
+      <li><em>"What is our leave policy?"</em> and <em>"How many days of annual leave do I get?"</em> → ~0.94 → HIT</li>
+    </ul>
+    <p>
+      A threshold below 0.90 would risk serving a cached answer about a subtly different question, potentially misleading users.
+    </p>
+
+    <h2>Language Scoping</h2>
+    <p>
+      The Redis index is scoped by language: <code>powerrag:cache:en</code>, <code>powerrag:cache:fr</code>, etc. An English query will never hit a French cache entry, even if they are semantically equivalent — the answers are in different languages.
+    </p>
+
+    <h2>TTL: 24 Hours</h2>
+    <p>
+      Cached answers expire after 24 hours. This ensures stale answers (from outdated documents) do not persist indefinitely. If you update a document and re-ingest it, old cached answers about that document will naturally expire within a day.
+    </p>
+
+    <h2>NoOpSemanticCacheService for Tests</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        NoOpSemanticCacheService.java
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/cache/NoOpSemanticCacheService.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>@Profile("test")
+@Component
+public class NoOpSemanticCacheService implements SemanticCache {
+    @Override public Optional&lt;CacheHit&gt; lookup(String q, String l) { return Optional.empty(); }
+    @Override public void store(...) { /* no-op */ }
+}</code></pre>
+    </div>
+
+    <p>
+      The <code>@Profile("test")</code> annotation activates this bean only when running with the <code>test</code> Spring profile. Unit and integration tests don't need Redis — the no-op implementation always returns a cache miss and discards stores silently.
+    </p>
+
+    <div class="page-nav">
+      <a href="17-full-rag-pipeline.html" class="btn-nav">← Previous</a>
+      <a href="19-guardrails.html" class="btn-nav">Next →</a>
+    </div>
+  </div>
+</main>
+
+</body>
+</html>

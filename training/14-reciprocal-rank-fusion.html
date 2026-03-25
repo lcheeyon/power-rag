@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reciprocal Rank Fusion — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html" class="active"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 4 — Retrieval
+      <span>›</span> Reciprocal Rank Fusion
+    </div>
+
+    <h1>Reciprocal Rank Fusion</h1>
+    <div class="meta">Module 4 · ~12 min read</div>
+
+    <div class="concept-box">
+      Dense (vector) search and keyword (FTS) search each return a ranked list. These lists use different scoring scales — cosine similarity vs ts_rank — so you cannot simply average the scores. <strong>Reciprocal Rank Fusion (RRF)</strong> is a position-based merging algorithm: it ignores the absolute scores and only cares about where each document appears in each list.
+    </div>
+
+    <h2>The RRF Formula</h2>
+    <p>For each document <em>d</em>, across all ranked lists:</p>
+    <pre style="background:#f1f5f9;padding:16px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:0.9rem;color:#1e293b;">
+  score(d) = Σ  1 / (rank(d, list) + k + 1)
+    </pre>
+    <p>
+      Where <code>k = 60</code> (a constant from the original RRF paper). The constant prevents top-ranked items from completely dominating — a document ranked 1st scores <code>1/62 ≈ 0.016</code> while one ranked 10th scores <code>1/71 ≈ 0.014</code>. The difference is meaningful but not overwhelming.
+    </p>
+
+    <h2>Full rrfMerge() Implementation</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        HybridRetriever.java — rrfMerge()
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/rag/retrieval/HybridRetriever.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>private List&lt;RetrievedChunk&gt; rrfMerge(List&lt;Document&gt; dense,
+                                      List&lt;DocumentChunk&gt; keyword, int k) {
+    Map&lt;String, Double&gt; scores = new LinkedHashMap&lt;&gt;();
+    Map&lt;String, RetrievedChunk&gt; chunkMap = new LinkedHashMap&lt;&gt;();
+
+    // Score dense results by rank position
+    for (int i = 0; i &lt; dense.size(); i++) {
+        String id = dense.get(i).getId();
+        scores.merge(id, 1.0 / (i + 1 + RRF_K), Double::sum);
+        chunkMap.computeIfAbsent(id, _ -&gt; fromAiDocument(dense.get(i)));
+    }
+
+    // Score FTS results by rank position
+    for (int i = 0; i &lt; keyword.size(); i++) {
+        String id = keyword.get(i).getQdrantId();
+        scores.merge(id, 1.0 / (i + 1 + RRF_K), Double::sum);
+        chunkMap.computeIfAbsent(id, _ -&gt; fromDomainChunk(keyword.get(i)));
+    }
+
+    // Sort by combined RRF score, cap at topK
+    return scores.entrySet().stream()
+        .sorted(Map.Entry.&lt;String, Double&gt;comparingByValue().reversed())
+        .limit(k)
+        .map(e -&gt; withScore(chunkMap.get(e.getKey()), e.getValue()))
+        .toList();
+}</code></pre>
+    </div>
+
+    <h2>Implementation Notes</h2>
+    <ul>
+      <li><code>scores.merge(id, value, Double::sum)</code> — adds the RRF contribution for each list. If a chunk appears in both lists, the scores accumulate.</li>
+      <li><code>chunkMap.computeIfAbsent</code> — stores the first representation encountered. A chunk appearing in both lists is only stored once.</li>
+      <li><code>RRF_K = 60</code> — the constant from the original paper (Cormack, Clarke, Buettcher 2009).</li>
+      <li>The final list is capped at <code>k = topK</code> (typically 10).</li>
+    </ul>
+
+    <h2>Worked Example</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Chunk</th>
+          <th>Dense rank</th>
+          <th>FTS rank</th>
+          <th>Dense RRF contrib.</th>
+          <th>FTS RRF contrib.</th>
+          <th>Combined score</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Chunk X</td>
+          <td>3rd</td>
+          <td>1st</td>
+          <td>1/(3+61) = 0.01563</td>
+          <td>1/(1+61) = 0.01613</td>
+          <td><strong>0.03176</strong></td>
+        </tr>
+        <tr>
+          <td>Chunk Y</td>
+          <td>1st</td>
+          <td>not found</td>
+          <td>1/(1+61) = 0.01613</td>
+          <td>0</td>
+          <td>0.01613</td>
+        </tr>
+        <tr>
+          <td>Chunk Z</td>
+          <td>not found</td>
+          <td>2nd</td>
+          <td>0</td>
+          <td>1/(2+61) = 0.01587</td>
+          <td>0.01587</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      Chunk X, despite ranking only 3rd in dense search, wins because it is consistently relevant across both methods — a strong signal of genuine relevance. Chunk Y topped the dense list but was not in FTS at all, suggesting it might be a semantic near-miss.
+    </p>
+
+    <div class="tip">RRF is robust and requires no hyperparameter tuning beyond the fixed k=60. It consistently outperforms simple score averaging in information retrieval benchmarks because rank position is more stable than raw scores across different scoring systems.</div>
+
+    <div class="page-nav">
+      <a href="13-keyword-search-fts.html" class="btn-nav">← Previous</a>
+      <a href="15-context-assembly.html" class="btn-nav">Next →</a>
+    </div>
+  </div>
+</main>
+
+</body>
+</html>

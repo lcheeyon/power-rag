@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Prompts &amp; Templates — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html" class="active"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 2 — LLM Integration
+      <span>›</span> System Prompts &amp; Templates
+    </div>
+
+    <h1>System Prompts and Prompt Templates</h1>
+    <div class="meta">Module 2 · ~10 min read</div>
+
+    <div class="concept-box">
+      A system prompt sets the LLM's persona, capabilities, and rules for the entire conversation. In RAG, it is also where you tell the model <em>how</em> to use the retrieved context: whether to cite sources, which language to respond in, and how to handle the case where no relevant documents were found.
+    </div>
+
+    <h2>What a System Prompt Is</h2>
+    <p>
+      Every LLM chat API distinguishes between three message roles:
+    </p>
+    <ul>
+      <li><strong>system</strong> — instructions to the model (not shown to the end user)</li>
+      <li><strong>user</strong> — the user's question or input</li>
+      <li><strong>assistant</strong> — the model's previous responses (for multi-turn conversations)</li>
+    </ul>
+    <p>
+      The system message is the highest-priority instruction. It shapes how the model responds to every subsequent user message.
+    </p>
+
+    <h2>defaultSystem() vs .system()</h2>
+    <table>
+      <thead>
+        <tr><th>Method</th><th>When it applies</th><th>Use case</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>defaultSystem(text)</code></td>
+          <td>Set once at bean creation via <code>ChatClient.builder()</code></td>
+          <td>Persistent persona/rules that apply to every call — SYSTEM_PREAMBLE in Power RAG</td>
+        </tr>
+        <tr>
+          <td><code>.system(text)</code></td>
+          <td>Set per-request in the fluent chain</td>
+          <td>Override the system prompt for a specific call without rebuilding the bean</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>MultilingualPromptBuilder</h2>
+    <p>
+      The user message in Power RAG is not just the raw question. It is a structured prompt containing retrieved context, the question, and language/citation instructions — all assembled by <code>MultilingualPromptBuilder</code>.
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        MultilingualPromptBuilder.java — buildUserMessage()
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/multilingual/MultilingualPromptBuilder.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>public String buildUserMessage(String question, String context,
+                               String language, boolean hasRelevantContext,
+                               boolean imagePresent) {
+    String imageInstruction = imagePresent
+        ? "An image has been attached. Carefully examine it...\n\n"
+        : "";
+
+    if (!hasRelevantContext || context.isBlank()) {
+        return imageInstruction +
+               "The knowledge base does not contain relevant documents. " +
+               "Answer using your general knowledge.\n\n" +
+               "Question: " + question + "\n\n" + langInstruction;
+    }
+    return imageInstruction + context +
+           "\n\nQuestion: " + question +
+           "\n\nPrimarily answer using the sources above, citing [SOURCE N]..." +
+           langInstruction;
+}</code></pre>
+    </div>
+
+    <h2>Prompt Structure in Practice</h2>
+    <p>The final user message sent to the LLM looks like this when context is available:</p>
+
+    <div class="ascii-diagram">
+[USER MESSAGE]
+
+[SOURCE 1] report.pdf § Executive Summary
+The Q3 revenue increased by 15% year-over-year...
+
+[SOURCE 2] policy.docx § Section 3
+All employees must complete annual compliance training...
+
+Question: What was Q3 revenue growth?
+
+Primarily answer using the sources above, citing [SOURCE N] inline.
+Respond in: English
+    </div>
+
+    <p>And this when no relevant context was found:</p>
+
+    <div class="ascii-diagram">
+[USER MESSAGE]
+
+The knowledge base does not contain relevant documents.
+Answer using your general knowledge.
+
+Question: What is the capital of France?
+
+Respond in: English
+    </div>
+
+    <div class="tip">Structured prompts with clear sections (context block, question, instructions) consistently produce better source citations and fewer hallucinations than unstructured prompts. The model can clearly identify which part is the evidence and which part is the question.</div>
+
+    <h2>Language Handling</h2>
+    <p>
+      <code>MultilingualPromptBuilder</code> appends a language instruction at the end of every user message. The language is detected from the request (or defaulted to English) and passed through the entire pipeline so that:
+    </p>
+    <ul>
+      <li>The LLM responds in the user's language</li>
+      <li>The semantic cache lookup is language-scoped (an English hit is not served to a Spanish query)</li>
+      <li>Audit logs record the detected language for analytics</li>
+    </ul>
+
+    <div class="page-nav">
+      <a href="06-dynamic-model-routing.html" class="btn-nav">← Previous</a>
+      <a href="08-document-parsing.html" class="btn-nav">Next →</a>
+    </div>
+  </div>
+</main>
+
+</body>
+</html>

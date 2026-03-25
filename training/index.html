@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spring AI &amp; RAG Course — Home</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+
+    <div class="hero">
+      <h1>Spring AI &amp; RAG Development</h1>
+      <p>Learn to build production-grade Retrieval-Augmented Generation systems using Spring AI, illustrated with the Power RAG reference project.</p>
+      <a href="01-what-is-rag.html" class="btn-start">Start Learning →</a>
+    </div>
+
+    <div class="prereq-box">
+      <h3>Prerequisites</h3>
+      <ul>
+        <li>Java 17+ (course uses Java 25)</li>
+        <li>Spring Boot basics — understanding of beans, auto-configuration, and REST controllers</li>
+        <li>Docker basics — running containers and using Docker Compose</li>
+        <li>Familiarity with Maven and <code>pom.xml</code></li>
+      </ul>
+    </div>
+
+    <!-- Module 1 -->
+    <div class="module-section">
+      <div class="module-header">Module 1 — Foundations</div>
+      <table class="module-table">
+        <thead>
+          <tr><th>#</th><th>Topic</th><th>Description</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>01</td>
+            <td><a href="01-what-is-rag.html">What is RAG?</a></td>
+            <td>Definition, the problem RAG solves, the 3-step loop, and the 9-stage Power RAG pipeline</td>
+            <td><span class="badge-time">8 min</span></td>
+          </tr>
+          <tr>
+            <td>02</td>
+            <td><a href="02-spring-ai-overview.html">Spring AI Overview</a></td>
+            <td>Key abstractions, the portable AI layer, BOM pattern, and "write once, run anywhere"</td>
+            <td><span class="badge-time">6 min</span></td>
+          </tr>
+          <tr>
+            <td>03</td>
+            <td><a href="03-project-setup.html">Project Setup</a></td>
+            <td>BOM import, provider starters, application.yml configuration for all models</td>
+            <td><span class="badge-time">10 min</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Module 2 -->
+    <div class="module-section">
+      <div class="module-header">Module 2 — LLM Integration</div>
+      <table class="module-table">
+        <thead>
+          <tr><th>#</th><th>Topic</th><th>Description</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>04</td>
+            <td><a href="04-chatclient-basics.html">ChatClient Basics</a></td>
+            <td>Three call styles, system prompts, defaultSystem(), and how Power RAG calls the LLM</td>
+            <td><span class="badge-time">8 min</span></td>
+          </tr>
+          <tr>
+            <td>05</td>
+            <td><a href="05-multiple-llm-providers.html">Multiple LLM Providers</a></td>
+            <td>@Qualifier pattern, SpringAiConfig.java, all registered beans and their purpose</td>
+            <td><span class="badge-time">10 min</span></td>
+          </tr>
+          <tr>
+            <td>06</td>
+            <td><a href="06-dynamic-model-routing.html">Dynamic Model Routing</a></td>
+            <td>Runtime model selection, resolveClient(), per-request ChatOptions override</td>
+            <td><span class="badge-time">8 min</span></td>
+          </tr>
+          <tr>
+            <td>07</td>
+            <td><a href="07-system-prompts.html">System Prompts &amp; Templates</a></td>
+            <td>System prompt patterns, MultilingualPromptBuilder, context-aware prompt construction</td>
+            <td><span class="badge-time">10 min</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Module 3 -->
+    <div class="module-section">
+      <div class="module-header">Module 3 — Document Ingestion</div>
+      <table class="module-table">
+        <thead>
+          <tr><th>#</th><th>Topic</th><th>Description</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>08</td>
+            <td><a href="08-document-parsing.html">Document Parsing</a></td>
+            <td>DocumentParser interface, all 6 parser types, Spring auto-injection of parser list</td>
+            <td><span class="badge-time">9 min</span></td>
+          </tr>
+          <tr>
+            <td>09</td>
+            <td><a href="09-chunking-strategies.html">Chunking Strategies</a></td>
+            <td>Why chunk, trade-offs, sliding window with overlap, visual diagram</td>
+            <td><span class="badge-time">9 min</span></td>
+          </tr>
+          <tr>
+            <td>10</td>
+            <td><a href="10-embeddings.html">Embeddings</a></td>
+            <td>Dense vector semantics, nomic-embed-text, 768 dimensions, the embedding pipeline</td>
+            <td><span class="badge-time">7 min</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Module 4 -->
+    <div class="module-section">
+      <div class="module-header">Module 4 — Retrieval</div>
+      <table class="module-table">
+        <thead>
+          <tr><th>#</th><th>Topic</th><th>Description</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>11</td>
+            <td><a href="11-vector-stores.html">Vector Stores</a></td>
+            <td>VectorStore interface, Qdrant setup, adding documents, Docker Compose config</td>
+            <td><span class="badge-time">8 min</span></td>
+          </tr>
+          <tr>
+            <td>12</td>
+            <td><a href="12-similarity-search.html">Similarity Search</a></td>
+            <td>Cosine similarity, SearchRequest API, topK strategy, semantic search explained</td>
+            <td><span class="badge-time">7 min</span></td>
+          </tr>
+          <tr>
+            <td>13</td>
+            <td><a href="13-keyword-search-fts.html">Keyword Search (FTS)</a></td>
+            <td>PostgreSQL tsvector, GIN index, Spring Data FTS query, when exact matching wins</td>
+            <td><span class="badge-time">9 min</span></td>
+          </tr>
+          <tr>
+            <td>14</td>
+            <td><a href="14-reciprocal-rank-fusion.html">Reciprocal Rank Fusion</a></td>
+            <td>RRF formula, k=60 rationale, full rrfMerge() implementation, worked example</td>
+            <td><span class="badge-time">12 min</span></td>
+          </tr>
+          <tr>
+            <td>15</td>
+            <td><a href="15-context-assembly.html">Context Assembly</a></td>
+            <td>Formatting chunks as [SOURCE N] blocks, 24k char cap, source citation extraction</td>
+            <td><span class="badge-time">8 min</span></td>
+          </tr>
+          <tr>
+            <td>16</td>
+            <td><a href="16-confidence-scoring.html">Confidence Scoring</a></td>
+            <td>RRF-score-based confidence, 0.1 threshold, graceful fallback to general knowledge</td>
+            <td><span class="badge-time">6 min</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Module 5 -->
+    <div class="module-section">
+      <div class="module-header">Module 5 — The Full Pipeline</div>
+      <table class="module-table">
+        <thead>
+          <tr><th>#</th><th>Topic</th><th>Description</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>17</td>
+            <td><a href="17-full-rag-pipeline.html">The Full RAG Pipeline</a></td>
+            <td>All 9 stages of RagService.query() from guardrail to audit log</td>
+            <td><span class="badge-time">15 min</span></td>
+          </tr>
+          <tr>
+            <td>18</td>
+            <td><a href="18-semantic-caching.html">Semantic Caching</a></td>
+            <td>Redis vector search, 0.92 threshold, 24h TTL, NoOp for tests</td>
+            <td><span class="badge-time">10 min</span></td>
+          </tr>
+          <tr>
+            <td>19</td>
+            <td><a href="19-guardrails.html">Guardrails</a></td>
+            <td>llama-guard3 input safety, PII regex output detection, fail-open design</td>
+            <td><span class="badge-time">11 min</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Module 6 -->
+    <div class="module-section">
+      <div class="module-header">Module 6 — Advanced Features</div>
+      <table class="module-table">
+        <thead>
+          <tr><th>#</th><th>Topic</th><th>Description</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>20</td>
+            <td><a href="20-multimodal-image-input.html">Multimodal Image Input</a></td>
+            <td>Spring AI Media API, provider-specific conversion, Base64 image decoding</td>
+            <td><span class="badge-time">9 min</span></td>
+          </tr>
+          <tr>
+            <td>21</td>
+            <td><a href="21-image-generation.html">Image Generation</a></td>
+            <td>Intent detection, Imagen 3 via Google GenAI SDK, Gemini Flash fallback</td>
+            <td><span class="badge-time">10 min</span></td>
+          </tr>
+          <tr>
+            <td>22</td>
+            <td><a href="22-text-to-sql.html">Text-to-SQL</a></td>
+            <td>Schema introspection, SQL prompt engineering, JSqlParser validation, execution</td>
+            <td><span class="badge-time">12 min</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Module 7 -->
+    <div class="module-section">
+      <div class="module-header">Module 7 — Production Concerns</div>
+      <table class="module-table">
+        <thead>
+          <tr><th>#</th><th>Topic</th><th>Description</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>23</td>
+            <td><a href="23-security-jwt.html">Security &amp; JWT</a></td>
+            <td>JwtAuthFilter, SecurityConfig filter chain, role-based access, stateless tokens</td>
+            <td><span class="badge-time">10 min</span></td>
+          </tr>
+          <tr>
+            <td>24</td>
+            <td><a href="24-database-migrations.html">Database Migrations</a></td>
+            <td>Flyway versioned migrations, naming convention, idempotent patterns, production rules</td>
+            <td><span class="badge-time">8 min</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Module 8 -->
+    <div class="module-section">
+      <div class="module-header">Module 8 — Quality &amp; Ops</div>
+      <table class="module-table">
+        <thead>
+          <tr><th>#</th><th>Topic</th><th>Description</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>25</td>
+            <td><a href="25-testing-spring-ai.html">Testing Spring AI Apps</a></td>
+            <td>Mocking ChatClient, NoOp cache, Testcontainers for Postgres and Qdrant</td>
+            <td><span class="badge-time">12 min</span></td>
+          </tr>
+          <tr>
+            <td>26</td>
+            <td><a href="26-observability-logging.html">Observability &amp; Logging</a></td>
+            <td>SLF4J log points, log levels, JaCoCo coverage thresholds, Actuator endpoints</td>
+            <td><span class="badge-time">8 min</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</main>
+
+</body>
+</html>

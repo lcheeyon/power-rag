@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Context Assembly — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html" class="active"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 4 — Retrieval
+      <span>›</span> Context Assembly
+    </div>
+
+    <h1>Context Assembly</h1>
+    <div class="meta">Module 4 · ~8 min read</div>
+
+    <div class="concept-box">
+      Context assembly is the bridge between retrieval and generation. It takes the ranked list of chunks from RRF and formats them into a structured text block that the LLM can read, reference, and cite. The format must be clear enough for the model to identify source boundaries and produce accurate <code>[SOURCE N]</code> citations.
+    </div>
+
+    <h2>The [SOURCE N] Format</h2>
+    <p>
+      Each chunk is rendered as a labelled block. The label <code>[SOURCE N]</code> is what the LLM includes in its answer when citing that passage:
+    </p>
+
+    <div class="ascii-diagram">
+[SOURCE 1] report.pdf § Executive Summary
+The Q3 revenue increased by 15% year-over-year, driven primarily
+by expansion in the Asia-Pacific region...
+
+[SOURCE 2] policy.docx § Section 3 — Compliance Training
+All employees must complete annual compliance training by December 31.
+Failure to comply may result in suspension of system access...
+
+[SOURCE 3] data.xlsx § Sheet1 Row 42
+Product: Widget A, Q3 Sales: 12,450 units, Revenue: $1.24M
+    </div>
+
+    <h2>ContextAssembler.assemble()</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        ContextAssembler.java — assemble()
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/rag/assembly/ContextAssembler.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>for (int i = 0; i &lt; chunks.size(); i++) {
+    String ref = buildRef(c);  // "filename § section"
+    String entry = String.format("[SOURCE %d] %s%n%s%n%n", i+1, ref, c.text());
+
+    if (totalChars + entry.length() &gt; maxContextChars) break; // 24,000 char cap
+    sb.append(entry);
+    totalChars += entry.length();
+}</code></pre>
+    </div>
+
+    <h2>The 24,000 Character Cap</h2>
+    <p>
+      LLMs have finite context windows. Claude Sonnet's context window is large (~200k tokens), but injecting all available text would:
+    </p>
+    <ul>
+      <li>Increase cost proportionally to token count</li>
+      <li>Increase latency</li>
+      <li>Risk diluting the most relevant passages with lower-quality ones</li>
+    </ul>
+    <p>
+      24,000 characters ≈ 6,000 tokens, which provides substantial context while leaving ample room for the question and response within any reasonable context window.
+    </p>
+    <p>
+      The cap is applied greedily: chunks are added in RRF-score order until the cap is hit. The most relevant chunks (highest RRF score) are always included.
+    </p>
+
+    <h2>Source Citation Extraction</h2>
+    <p>
+      After the LLM produces its answer, the same chunks are also used to build a structured <code>List&lt;SourceRef&gt;</code> — returned to the frontend alongside the answer text for display as a citations panel.
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        ContextAssembler.java — extractSources()
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/rag/assembly/ContextAssembler.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>public List&lt;SourceRef&gt; extractSources(List&lt;RetrievedChunk&gt; chunks) {
+    return chunks.stream()
+        .map(c -&gt; new SourceRef(
+            str(c.metadata().get("file_name")),
+            buildRef(c),
+            snippet(c.text()),  // first 200 chars
+            c.metadata().get("page_number"),
+            toInt(c.metadata().get("row_number") != null
+                ? c.metadata().get("row_number")
+                : c.metadata().get("start_line")),
+            str(c.metadata().get("document_id"))))
+        .toList();
+}</code></pre>
+    </div>
+
+    <p>
+      Each <code>SourceRef</code> carries enough information for the frontend to render a clickable citation that links back to the original document (by <code>document_id</code>) and the specific page or row.
+    </p>
+
+    <div class="tip">The 200-character snippet in each <code>SourceRef</code> is displayed in the citation panel as a preview. Keep it short enough to scan quickly but long enough to confirm relevance.</div>
+
+    <div class="page-nav">
+      <a href="14-reciprocal-rank-fusion.html" class="btn-nav">← Previous</a>
+      <a href="16-confidence-scoring.html" class="btn-nav">Next →</a>
+    </div>
+  </div>
+</main>
+
+</body>
+</html>

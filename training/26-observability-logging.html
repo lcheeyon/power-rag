@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Observability &amp; Logging — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html" class="active"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 8 — Quality &amp; Ops
+      <span>›</span> Observability &amp; Logging
+    </div>
+
+    <h1>Observability and Logging</h1>
+    <div class="meta">Module 8 · ~8 min read</div>
+
+    <div class="concept-box">
+      A RAG pipeline has many failure modes: slow LLMs, cache misses, low-confidence retrieval, guardrail blocks, PII redactions. Good logging makes each of these visible at a glance. Power RAG logs structured INFO messages at every pipeline outcome and WARN messages at every safety event.
+    </div>
+
+    <h2>Key Log Points in the Pipeline</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        RagService.java — pipeline log statements
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/rag/service/RagService.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>// Successful full RAG query
+log.info("RAG query completed in {}ms — provider={} model={} confidence={} sources={} lang={}",
+    durationMs, resolvedProvider, resolvedId, confidence, sources.size(), lang);
+
+// Cache hit — pipeline short-circuited
+log.info("RAG cache HIT in {}ms — lang={}", durationMs, lang);
+
+// Input blocked by guardrail
+log.warn("Input blocked by guardrail: category={}", inputCheck.category());
+
+// Output PII detected
+log.warn("Output PII detected: category={}", outputCheck.category());
+
+// No relevant documents found
+log.info("No relevant docs (confidence={}), using general knowledge", confidence);</code></pre>
+    </div>
+
+    <h2>What Each Log Line Tells You</h2>
+    <table>
+      <thead>
+        <tr><th>Log message</th><th>Operational insight</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>RAG query completed in Xms</code></td>
+          <td>End-to-end latency. &gt;5s may indicate LLM timeout or slow retrieval</td>
+        </tr>
+        <tr>
+          <td><code>confidence=0.XX</code></td>
+          <td>Retrieval quality. Low values (&lt;0.2) repeatedly may indicate indexing gaps</td>
+        </tr>
+        <tr>
+          <td><code>sources=N</code></td>
+          <td>How many chunks were used. 0 = general knowledge fallback</td>
+        </tr>
+        <tr>
+          <td><code>RAG cache HIT</code></td>
+          <td>Cache is working. High hit rate = cost and latency savings</td>
+        </tr>
+        <tr>
+          <td><code>Input blocked by guardrail</code></td>
+          <td>Safety system triggered. Monitor for false positives</td>
+        </tr>
+        <tr>
+          <td><code>Output PII detected</code></td>
+          <td>PII found in LLM response. Investigate document content</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Log Level Configuration</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        application.yml — logging levels
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/resources/application.yml" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>logging:
+  level:
+    com.powerrag: INFO
+    org.springframework.ai: INFO      # change to DEBUG for LLM call details
+    org.springframework.security: WARN # change to DEBUG for auth tracing
+    org.flywaydb: INFO</code></pre>
+    </div>
+
+    <p>Set <code>org.springframework.ai</code> to <code>DEBUG</code> to see the full prompt and response for every LLM call — extremely useful during development. Never leave DEBUG enabled in production (it logs the full prompt content including any sensitive user queries).</p>
+
+    <h2>JaCoCo Coverage Thresholds</h2>
+    <p>
+      The Maven build enforces minimum coverage thresholds. The build fails if coverage drops below these levels, preventing new code from being merged without tests.
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        pom.xml — JaCoCo coverage rules
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/pom.xml" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>&lt;rule&gt;
+  &lt;element&gt;BUNDLE&lt;/element&gt;
+  &lt;limits&gt;
+    &lt;limit&gt;&lt;counter&gt;LINE&lt;/counter&gt;&lt;value&gt;COVEREDRATIO&lt;/value&gt;&lt;minimum&gt;0.80&lt;/minimum&gt;&lt;/limit&gt;
+    &lt;limit&gt;&lt;counter&gt;BRANCH&lt;/counter&gt;&lt;value&gt;COVEREDRATIO&lt;/value&gt;&lt;minimum&gt;0.75&lt;/minimum&gt;&lt;/limit&gt;
+  &lt;/limits&gt;
+&lt;/rule&gt;</code></pre>
+    </div>
+
+    <h2>Spring Boot Actuator Endpoints</h2>
+    <p>
+      Spring Boot Actuator provides built-in operational endpoints. Power RAG exposes:
+    </p>
+    <table>
+      <thead>
+        <tr><th>Endpoint</th><th>Purpose</th><th>Access</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>/actuator/health</code></td>
+          <td>Application health status — checks DB, Redis, Qdrant connectivity</td>
+          <td>Public (for load balancer health checks)</td>
+        </tr>
+        <tr>
+          <td><code>/actuator/metrics</code></td>
+          <td>JVM metrics, HTTP request counts, latency histograms</td>
+          <td>Authenticated / internal only</td>
+        </tr>
+        <tr>
+          <td><code>/actuator/prometheus</code></td>
+          <td>Prometheus-format metrics scrape endpoint</td>
+          <td>Authenticated / internal only</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="tip">For production monitoring, connect <code>/actuator/prometheus</code> to a Prometheus + Grafana stack. Key metrics to dashboard: <code>http_server_requests_seconds</code> (latency by endpoint), custom <code>rag.query.duration</code> timer, and <code>rag.cache.hit.rate</code> gauge.</div>
+
+    <h2>Congratulations!</h2>
+    <p>
+      You have completed the Spring AI &amp; RAG Development course. You now understand every component of the Power RAG pipeline — from document ingestion to LLM response, from semantic caching to safety guardrails.
+    </p>
+    <p>
+      The full source code is available at <a href="https://github.com/lcheeyon/power-rag" target="_blank">github.com/lcheeyon/power-rag</a>.
+    </p>
+
+    <div class="page-nav">
+      <a href="25-testing-spring-ai.html" class="btn-nav">← Previous</a>
+      <a href="index.html" class="btn-nav">Back to Index</a>
+    </div>
+  </div>
+</main>
+
+</body>
+</html>

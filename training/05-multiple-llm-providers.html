@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multiple LLM Providers — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html" class="active"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 2 — LLM Integration
+      <span>›</span> Multiple LLM Providers
+    </div>
+
+    <h1>Multiple LLM Providers</h1>
+    <div class="meta">Module 2 · ~10 min read</div>
+
+    <div class="concept-box">
+      When you have multiple beans of the same type in a Spring context, you need to tell Spring <em>which</em> one to inject. The <strong>@Qualifier</strong> annotation is the standard solution. Combined with <strong>@Primary</strong>, it gives you a sensible default while still allowing precise selection when needed.
+    </div>
+
+    <h2>The @Qualifier Pattern</h2>
+    <p>
+      Power RAG registers multiple <code>ChatClient</code> beans — one per provider (Claude, Gemini, Ollama). Without disambiguation Spring would throw a <code>NoUniqueBeanDefinitionException</code>. The solution is to annotate each bean with a unique <code>@Qualifier</code> name and annotate the injection point with the same qualifier.
+    </p>
+
+    <h2>SpringAiConfig.java — Full Listing</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        SpringAiConfig.java
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/config/SpringAiConfig.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>@Configuration
+public class SpringAiConfig {
+
+    private static final String SYSTEM_PREAMBLE = """
+            You are a knowledgeable, helpful, and fair assistant...
+            """;
+
+    @Bean @Primary @Qualifier("claudeSonnet")
+    public ChatClient claudeSonnetClient(AnthropicChatModel model) {
+        return ChatClient.builder(model)
+                .defaultSystem(SYSTEM_PREAMBLE)
+                .build();
+    }
+
+    @Bean @Qualifier("geminiFlash")
+    public ChatClient geminiFlashClient(GoogleGenAiChatModel model) {
+        return ChatClient.builder(model)
+                .defaultSystem(SYSTEM_PREAMBLE)
+                .build();
+    }
+
+    @Bean @Qualifier("ollamaLlamaGuard")
+    public ChatClient ollamaLlamaGuardClient(OllamaChatModel model) {
+        return ChatClient.builder(model).build(); // No system prompt for guardrails
+    }
+}</code></pre>
+    </div>
+
+    <h2>Explanation</h2>
+
+    <h3>@Primary</h3>
+    <p>
+      The <code>claudeSonnetClient</code> bean is annotated with <code>@Primary</code>. This means: when a component injects <code>ChatClient</code> without any <code>@Qualifier</code>, Spring automatically selects this bean. It is the application default.
+    </p>
+
+    <h3>@Qualifier("ollamaLlamaGuard")</h3>
+    <p>
+      The Ollama bean is built <em>without</em> a system prompt. This is intentional: the llama-guard3 model is used for safety classification, not for conversational assistance. Injecting a "helpful assistant" system prompt would interfere with its classification output.
+    </p>
+
+    <h3>Constructor parameter injection</h3>
+    <p>
+      Each bean method receives a provider-specific model type (<code>AnthropicChatModel</code>, <code>GoogleGenAiChatModel</code>, <code>OllamaChatModel</code>). These are auto-created by the respective provider starters. Spring injects them by type — there is no ambiguity because each type is unique.
+    </p>
+
+    <div class="tip"><code>@Primary</code> means this bean is injected when no <code>@Qualifier</code> is specified. Always mark exactly one bean as <code>@Primary</code> to avoid <code>NoUniqueBeanDefinitionException</code> in components that inject without a qualifier.</div>
+
+    <h2>Registered Beans in Power RAG</h2>
+    <table>
+      <thead>
+        <tr><th>Qualifier</th><th>Provider</th><th>Default Model</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>claudeSonnet</code> (Primary)</td>
+          <td>Anthropic</td>
+          <td>claude-sonnet-4-6</td>
+          <td>Main RAG chat responses</td>
+        </tr>
+        <tr>
+          <td><code>geminiFlash</code></td>
+          <td>Google GenAI</td>
+          <td>gemini-2.5-flash</td>
+          <td>Alternative provider for RAG; image generation fallback</td>
+        </tr>
+        <tr>
+          <td><code>ollamaLlamaGuard</code></td>
+          <td>Ollama</td>
+          <td>llama-guard3:8b</td>
+          <td>Input/output safety classification (guardrails)</td>
+        </tr>
+        <tr>
+          <td><em>dynamic</em></td>
+          <td>Ollama</td>
+          <td>any installed model</td>
+          <td>User-selected Ollama models resolved at runtime</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Injecting a Specific Bean</h2>
+    <p>To inject the Gemini client specifically in a service:</p>
+
+    <div class="code-block">
+      <div class="code-header">
+        Injecting with @Qualifier in a Spring component
+      </div>
+      <pre><code>@Service
+public class SomeService {
+    private final ChatClient geminiClient;
+
+    public SomeService(@Qualifier("geminiFlash") ChatClient geminiClient) {
+        this.geminiClient = geminiClient;
+    }
+}</code></pre>
+    </div>
+
+    <div class="page-nav">
+      <a href="04-chatclient-basics.html" class="btn-nav">← Previous</a>
+      <a href="06-dynamic-model-routing.html" class="btn-nav">Next →</a>
+    </div>
+  </div>
+</main>
+
+</body>
+</html>

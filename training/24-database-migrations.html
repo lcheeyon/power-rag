@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database Migrations — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html" class="active"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 7 — Production Concerns
+      <span>›</span> Database Migrations with Flyway
+    </div>
+
+    <h1>Database Migrations with Flyway</h1>
+    <div class="meta">Module 7 · ~8 min read</div>
+
+    <div class="concept-box">
+      Flyway treats database schema changes as versioned code. Each migration is a SQL file with a version number. Flyway tracks which migrations have been applied in a <code>flyway_schema_history</code> table and runs only the new ones on startup. Schema evolution becomes reproducible and auditable.
+    </div>
+
+    <h2>Why Flyway?</h2>
+    <ul>
+      <li>Schema changes are in version control alongside the code that requires them</li>
+      <li>Every environment (dev, staging, prod) goes through the same migration sequence</li>
+      <li>Flyway validates checksums on startup — modified migrations are detected and rejected</li>
+      <li>Zero-config in Spring Boot — auto-runs on startup when <code>spring.flyway.enabled=true</code></li>
+    </ul>
+
+    <h2>Naming Convention</h2>
+    <p>
+      Flyway migration files follow the pattern <code>V{version}__{description}.sql</code> (two underscores):
+    </p>
+    <ul>
+      <li><code>V1__init_schema.sql</code> — initial tables</li>
+      <li><code>V2__document_ingestion.sql</code> — document and chunk tables</li>
+      <li><code>V3__add_guardrail_flags.sql</code> — guardrail logging table</li>
+    </ul>
+    <p>Migrations run in version order. Gaps are allowed (V1, V3, V5 is valid).</p>
+
+    <div class="warning">Never modify an existing migration file after it has been applied to any environment. Flyway stores the checksum of each migration. Modifying a file will cause a startup failure on every environment that already ran it. To fix a mistake, create a new migration.</div>
+
+    <h2>Example: V1 Initial Schema</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        V1__init_schema.sql — users table
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/resources/db/migration/V1__init_schema.sql" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>CREATE TABLE users (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username    VARCHAR(50) UNIQUE NOT NULL,
+    password    VARCHAR(255) NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);</code></pre>
+    </div>
+
+    <h2>Idempotent Patterns</h2>
+    <p>
+      For migrations that might need to be re-run (e.g., data backfills), use idempotent SQL patterns:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        Idempotent migration patterns
+      </div>
+      <pre><code>CREATE TABLE IF NOT EXISTS my_table (...);
+
+INSERT INTO config_values (key, value)
+VALUES ('max_results', '10')
+ON CONFLICT (key) DO NOTHING;
+
+ALTER TABLE my_table
+  ADD COLUMN IF NOT EXISTS new_col VARCHAR(100);</code></pre>
+    </div>
+
+    <h2>Application Configuration</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        application.yml — Flyway configuration
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/resources/application.yml" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>spring:
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: false</code></pre>
+    </div>
+
+    <h2>Production Rules</h2>
+
+    <div class="warning">Never use <code>spring.jpa.hibernate.ddl-auto: create</code> or <code>update</code> in production alongside Flyway. Hibernate's schema management and Flyway will conflict, potentially dropping tables or leaving the schema in an inconsistent state. Set <code>ddl-auto: validate</code> or <code>none</code>.</div>
+
+    <table>
+      <thead>
+        <tr><th>ddl-auto value</th><th>Environment</th><th>Effect</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>none</code></td><td>Production</td><td>Hibernate makes no schema changes — Flyway controls everything</td></tr>
+        <tr><td><code>validate</code></td><td>Staging / CI</td><td>Hibernate checks the schema matches entities — fails fast on mismatch</td></tr>
+        <tr><td><code>create</code></td><td>Never with Flyway</td><td>Drops and recreates schema — destroys data</td></tr>
+        <tr><td><code>update</code></td><td>Never with Flyway</td><td>Conflicts with Flyway's schema ownership</td></tr>
+      </tbody>
+    </table>
+
+    <div class="page-nav">
+      <a href="23-security-jwt.html" class="btn-nav">← Previous</a>
+      <a href="25-testing-spring-ai.html" class="btn-nav">Next →</a>
+    </div>
+  </div>
+</main>
+
+</body>
+</html>

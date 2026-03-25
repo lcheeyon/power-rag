@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>What is RAG? — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html" class="active"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 1 — Foundations
+      <span>›</span> What is RAG?
+    </div>
+
+    <h1>What is RAG?</h1>
+    <div class="meta">Module 1 · ~8 min read</div>
+
+    <div class="concept-box">
+      <strong>Core idea:</strong> RAG lets you give an LLM access to your own documents without retraining it. The model stays the same — you simply augment each query with retrieved knowledge.
+    </div>
+
+    <h2>Definition</h2>
+    <p>
+      <strong>Retrieval-Augmented Generation (RAG)</strong> is an architecture that combines a knowledge retrieval system with a Large Language Model. Instead of relying solely on what the LLM learned during training, RAG first searches a curated knowledge base for relevant passages, then injects those passages into the LLM prompt as context.
+    </p>
+    <p>
+      The result: answers grounded in real, up-to-date, domain-specific content — with citations back to the source documents.
+    </p>
+
+    <h2>The Problem RAG Solves</h2>
+    <p>LLMs have three fundamental limitations when used alone:</p>
+    <ul>
+      <li><strong>Training cutoff:</strong> The model knows nothing that happened after its training data was collected. Ask Claude about last week's earnings report and it will either confabulate or refuse.</li>
+      <li><strong>Hallucination:</strong> LLMs generate plausible-sounding text even when they do not know the answer. Without grounding in real documents, confident-sounding wrong answers are common.</li>
+      <li><strong>Private / proprietary data:</strong> Your internal policies, contracts, product specs, and customer data were never in the training corpus. The LLM simply does not know them.</li>
+    </ul>
+    <p>RAG addresses all three by putting the relevant text directly in the prompt at query time.</p>
+
+    <h2>RAG vs Fine-Tuning</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Dimension</th>
+          <th>RAG</th>
+          <th>Fine-Tuning</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Knowledge update speed</td><td>Instant — add documents to the store</td><td>Hours/days — retrain the model</td></tr>
+        <tr><td>Cost</td><td>Storage + inference</td><td>GPU training + inference</td></tr>
+        <tr><td>Interpretability</td><td>High — sources are visible</td><td>Low — knowledge baked into weights</td></tr>
+        <tr><td>Hallucination control</td><td>Strong — answers cite passages</td><td>Moderate — style improves, facts may not</td></tr>
+        <tr><td>Best for</td><td>Domain knowledge, live data, Q&amp;A over docs</td><td>Style, tone, structured output format</td></tr>
+      </tbody>
+    </table>
+
+    <h2>The Three-Step RAG Loop</h2>
+
+    <div class="pipeline-step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <div class="step-title">Index</div>
+        <div class="step-desc">Parse your documents into chunks, embed each chunk as a dense vector, and store the vectors in a vector database. This happens offline, before any user query arrives.</div>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <div class="step-title">Retrieve</div>
+        <div class="step-desc">When a user asks a question, embed the question and search the vector store for the most semantically similar chunks. Power RAG also runs a parallel keyword search and merges the two result sets with Reciprocal Rank Fusion.</div>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <div class="step-title">Generate</div>
+        <div class="step-desc">Inject the retrieved chunks as context into the LLM prompt. The LLM reads the context, answers the question, and cites the sources. The answer is grounded in your actual documents.</div>
+      </div>
+    </div>
+
+    <h2>The Power RAG 9-Stage Pipeline</h2>
+    <p>
+      Power RAG extends the basic three-step loop with safety, caching, and observability layers. The full pipeline has nine stages:
+    </p>
+
+    <div class="ascii-diagram">
+  User Question
+       │
+       ▼
+  ┌─────────────────────────────────────────────────────────┐
+  │  Stage 0: Input Guardrail                               │
+  │  llama-guard3:8b checks for unsafe content              │
+  │  BLOCK ──► 403 response + flag logged                   │
+  └──────────────────────────┬──────────────────────────────┘
+                             │ PASS
+                             ▼
+  ┌─────────────────────────────────────────────────────────┐
+  │  Stage 1: Semantic Cache Lookup                         │
+  │  Redis vector search (threshold 0.92)                   │
+  │  HIT ──► return cached answer immediately               │
+  └──────────────────────────┬──────────────────────────────┘
+                             │ MISS
+                             ▼
+  ┌─────────────────────────────────────────────────────────┐
+  │  Stage 2: Hybrid Retrieval                              │
+  │  Dense search (Qdrant) + FTS (PostgreSQL) → RRF merge  │
+  └──────────────────────────┬──────────────────────────────┘
+                             │
+                             ▼
+  ┌─────────────────────────────────────────────────────────┐
+  │  Stage 3: Confidence Scoring                            │
+  │  RRF score average → 0.0–1.0                            │
+  │  &lt;0.1 → use general knowledge, skip citations          │
+  └──────────────────────────┬──────────────────────────────┘
+                             │
+                             ▼
+  ┌─────────────────────────────────────────────────────────┐
+  │  Stage 4: Context Assembly                              │
+  │  Format chunks as [SOURCE N] blocks (24k char cap)      │
+  └──────────────────────────┬──────────────────────────────┘
+                             │
+                             ▼
+  ┌─────────────────────────────────────────────────────────┐
+  │  Stage 5: LLM Call                                      │
+  │  Resolve model → build prompt → stream/call → answer    │
+  └──────────────────────────┬──────────────────────────────┘
+                             │
+                             ▼
+  ┌─────────────────────────────────────────────────────────┐
+  │  Stage 6: Output Guardrail                              │
+  │  Regex PII detection → redact if email/SSN/CC found     │
+  └──────────────────────────┬──────────────────────────────┘
+                             │
+                             ▼
+  ┌─────────────────────────────────────────────────────────┐
+  │  Stage 7: Cache Store                                   │
+  │  Store answer in Redis with 24h TTL                     │
+  └──────────────────────────┬──────────────────────────────┘
+                             │
+                             ▼
+  ┌─────────────────────────────────────────────────────────┐
+  │  Stage 8: Audit Log                                     │
+  │  Persist interaction to PostgreSQL interactions table   │
+  └──────────────────────────┬──────────────────────────────┘
+                             │
+                             ▼
+                      Answer + Sources
+    </div>
+
+    <p>
+      Each stage is explored in depth in subsequent topics. The full implementation lives in
+      <code>RagService.java</code> — see <a href="17-full-rag-pipeline.html">Topic 17: The Full RAG Pipeline</a>
+      for a stage-by-stage walkthrough.
+    </p>
+
+    <div class="page-nav">
+      <a href="index.html" class="btn-nav">← Home</a>
+      <a href="02-spring-ai-overview.html" class="btn-nav">Next →</a>
+    </div>
+  </div>
+</main>
+
+</body>
+</html>

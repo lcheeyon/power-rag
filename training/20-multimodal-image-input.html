@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Multimodal Image Input — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html" class="active"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 6 — Advanced Features
+      <span>›</span> Multimodal Image Input
+    </div>
+
+    <h1>Multimodal Image Input</h1>
+    <div class="meta">Module 6 · ~9 min read</div>
+
+    <div class="concept-box">
+      Spring AI's <strong>Media API</strong> lets you attach images to a <code>UserMessage</code>. The framework handles the provider-specific encoding automatically — the same code works for both Claude (Anthropic vision blocks) and Gemini (<code>Part.inlineData</code>).
+    </div>
+
+    <h2>Spring AI Media API</h2>
+
+    <div class="code-block">
+      <div class="code-header">
+        RagService.java — building a multimodal message
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/rag/service/RagService.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>Media media = new Media(
+    MimeType.valueOf("image/jpeg"),
+    new ByteArrayResource(imageBytes));
+
+UserMessage userMessage = UserMessage.builder()
+    .text(promptText)
+    .media(media)
+    .build();
+
+String answer = chatClient.prompt()
+    .messages(userMessage)
+    .call()
+    .content();</code></pre>
+    </div>
+
+    <h2>Provider-Specific Conversion</h2>
+    <p>
+      Spring AI converts the <code>Media</code> object into the correct format for each provider automatically:
+    </p>
+    <table>
+      <thead>
+        <tr><th>Provider</th><th>Wire format</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Anthropic (Claude)</td>
+          <td>Vision content block: <code>{"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": "..."}}</code></td>
+        </tr>
+        <tr>
+          <td>Google GenAI (Gemini)</td>
+          <td><code>mediaToParts()</code> → <code>Part.inlineData</code> with base64 and MIME type</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Your application code does not change between providers — only the bean injected changes.</p>
+
+    <h2>Base64 Image Decoding from the Frontend</h2>
+    <p>
+      The React frontend sends images as Base64-encoded data URIs (e.g., <code>data:image/jpeg;base64,/9j/4AAQ...</code>). The backend decodes this before constructing the <code>Media</code> object:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        RagService.java — buildUserMessageWithImage()
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/rag/service/RagService.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>private static UserMessage buildUserMessageWithImage(String text, String imageBase64) {
+    String mimeTypeStr = "image/jpeg";
+    if (imageBase64.startsWith("data:")) {
+        int semi = imageBase64.indexOf(';');
+        if (semi &gt; 5) mimeTypeStr = imageBase64.substring(5, semi);
+    }
+    String encoded = imageBase64.contains(",")
+        ? imageBase64.split(",", 2)[1] : imageBase64;
+    byte[] imageBytes = Base64.getDecoder().decode(encoded);
+    Media media = new Media(MimeType.valueOf(mimeTypeStr),
+        new ByteArrayResource(imageBytes));
+    return UserMessage.builder().text(text).media(media).build();
+}</code></pre>
+    </div>
+
+    <h3>Key Points</h3>
+    <ul>
+      <li>The MIME type is parsed from the data URI prefix (<code>data:image/png;</code>, <code>data:image/webp;</code>, etc.)</li>
+      <li>The base64 payload is extracted after the comma separator in the data URI</li>
+      <li>Raw base64 (no data URI prefix) is also supported</li>
+    </ul>
+
+    <h2>The imagePresent Flag</h2>
+    <p>
+      When an image is attached, <code>MultilingualPromptBuilder</code> prepends an image instruction to the user message:
+    </p>
+    <div class="code-block">
+      <div class="code-header">Additional instruction when imagePresent = true</div>
+      <pre><code>"An image has been attached. Carefully examine it and use it to answer
+the question. If the image contains text, tables, or diagrams, analyse
+them thoroughly.\n\n"</code></pre>
+    </div>
+    <p>
+      This explicit instruction improves vision model performance — without it, models sometimes focus on text context and underutilise the attached image.
+    </p>
+
+    <div class="tip">Gemini models generally perform better than Claude on dense diagram interpretation (charts, technical schematics). Claude excels at analysing documents with mixed text and images. Consider routing image-heavy queries to the appropriate provider.</div>
+
+    <div class="page-nav">
+      <a href="19-guardrails.html" class="btn-nav">← Previous</a>
+      <a href="21-image-generation.html" class="btn-nav">Next →</a>
+    </div>
+  </div>
+</main>
+
+</body>
+</html>

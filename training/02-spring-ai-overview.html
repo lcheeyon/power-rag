@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spring AI Overview — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html" class="active"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 1 — Foundations
+      <span>›</span> Spring AI Overview
+    </div>
+
+    <h1>Spring AI Overview</h1>
+    <div class="meta">Module 1 · ~6 min read</div>
+
+    <div class="concept-box">
+      <strong>What Spring AI is:</strong> a portable AI abstraction layer for Spring Boot. It wraps AI providers — Anthropic, Google Gemini, OpenAI, Ollama, and more — behind unified interfaces so your application code does not change when you switch providers.
+    </div>
+
+    <h2>The Problem Spring AI Solves</h2>
+    <p>
+      Every AI provider has its own SDK, its own request/response format, its own authentication scheme, and its own streaming protocol. Without an abstraction layer you end up tightly coupled to one provider, with vendor-specific code scattered throughout your application.
+    </p>
+    <p>
+      Spring AI provides a consistent programming model — the same <code>ChatClient</code>, <code>EmbeddingModel</code>, and <code>VectorStore</code> interfaces work regardless of which provider is underneath.
+    </p>
+
+    <h2>Key Abstractions</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Abstraction</th>
+          <th>Interface</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>ChatClient</strong></td>
+          <td><code>ChatClient</code></td>
+          <td>Send prompts (user + system messages) and receive text or structured responses. Supports streaming.</td>
+        </tr>
+        <tr>
+          <td><strong>EmbeddingModel</strong></td>
+          <td><code>EmbeddingModel</code></td>
+          <td>Convert text strings into dense float vectors for semantic similarity comparison.</td>
+        </tr>
+        <tr>
+          <td><strong>VectorStore</strong></td>
+          <td><code>VectorStore</code></td>
+          <td>Store documents with their embeddings and search for semantically similar documents given a query.</td>
+        </tr>
+        <tr>
+          <td><strong>DocumentReader</strong></td>
+          <td><code>DocumentReader</code></td>
+          <td>Parse various file formats (PDF, Word, HTML) into Spring AI <code>Document</code> objects.</td>
+        </tr>
+        <tr>
+          <td><strong>ImageModel</strong></td>
+          <td><code>ImageModel</code></td>
+          <td>Generate images from text prompts (e.g., DALL-E, Imagen).</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>The "Write Once, Run Anywhere" Promise</h2>
+    <p>
+      Because all providers implement the same interfaces, you can swap Claude for Gemini by changing one Spring bean declaration. Your service code, your tests, your prompt logic — none of it changes.
+    </p>
+    <p>
+      In Power RAG, <code>SpringAiConfig.java</code> registers one <code>ChatClient</code> bean per provider. The service layer injects whichever bean it needs by <code>@Qualifier</code>. At runtime, the user can even choose a different provider per request — the service resolves the correct client dynamically. See <a href="05-multiple-llm-providers.html">Topic 05</a> and <a href="06-dynamic-model-routing.html">Topic 06</a> for the full pattern.
+    </p>
+
+    <div class="ascii-diagram">
+  Your Application Code
+         │
+         │  uses
+         ▼
+  ┌──────────────────────────────────────────┐
+  │           Spring AI Abstractions         │
+  │  ChatClient · EmbeddingModel · VectorStore│
+  └──────┬───────────┬──────────────┬────────┘
+         │           │              │
+         ▼           ▼              ▼
+   Anthropic      Google         Ollama
+   Claude         Gemini         (local)
+    </div>
+
+    <h2>Spring AI BOM Pattern</h2>
+    <p>
+      Spring AI uses a Bill of Materials (BOM) to manage dependency versions. You import the BOM once in <code>&lt;dependencyManagement&gt;</code> and then declare individual starters without specifying versions — the BOM ensures all Spring AI artifacts stay in sync.
+    </p>
+    <p>
+      Power RAG uses Spring AI <strong>1.1.2</strong>, the latest GA release for Spring Boot 3.x. See <a href="03-project-setup.html">Topic 03: Project Setup</a> for the full <code>pom.xml</code> configuration.
+    </p>
+
+    <div class="tip">The BOM approach prevents version skew between Spring AI modules. Never declare individual Spring AI artifact versions — always let the BOM control them.</div>
+
+    <h2>Provider Starters</h2>
+    <p>
+      Each provider has its own auto-configuration starter. Adding the starter to your <code>pom.xml</code> is all you need to get a working <code>ChatModel</code> bean wired up with your application.yml credentials:
+    </p>
+    <ul>
+      <li><code>spring-ai-starter-model-anthropic</code> — Claude (Anthropic API)</li>
+      <li><code>spring-ai-starter-model-google-genai</code> — Gemini (Google AI API)</li>
+      <li><code>spring-ai-starter-model-ollama</code> — Any model running via Ollama locally</li>
+    </ul>
+
+    <div class="page-nav">
+      <a href="01-what-is-rag.html" class="btn-nav">← Previous</a>
+      <a href="03-project-setup.html" class="btn-nav">Next →</a>
+    </div>
+  </div>
+</main>
+
+</body>
+</html>
