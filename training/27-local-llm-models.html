@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Local Open-Source LLMs — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+  <div class="sidebar-module">Module 9 — Local AI Infrastructure</div>
+  <nav>
+    <a href="27-local-llm-models.html" class="active"><span class="topic-num">27</span> Local Open-Source LLMs</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 9 — Local AI Infrastructure
+      <span>›</span> Local Open-Source LLMs
+    </div>
+
+    <h1>Local Open-Source LLMs</h1>
+    <div class="meta">Module 9 · ~18 min read</div>
+
+    <div class="concept-box">
+      Power RAG uses Ollama to run several open-source models locally. Each model serves a
+      different role in the pipeline — embedding, safety classification, general chat, code
+      analysis, image description, or SQL generation — and each role has different accuracy
+      and latency requirements. This topic maps every role to the best open-source candidates
+      and gives concrete hardware guidance so you know what to buy or provision.
+    </div>
+
+    <!-- ─── WHY LOCAL ────────────────────────────────────────────────── -->
+    <h2>Why Run LLMs Locally?</h2>
+    <p>Cloud APIs are the fastest way to get started, but local models become attractive once any of these apply:</p>
+    <table>
+      <thead><tr><th>Reason</th><th>Details</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Data privacy</strong></td><td>Documents never leave your network — essential for legal, medical, or government data</td></tr>
+        <tr><td><strong>Cost at scale</strong></td><td>After ~1 M tokens/day, GPU hardware pays for itself vs. cloud API bills</td></tr>
+        <tr><td><strong>Offline / air-gapped</strong></td><td>Factory floors, secure facilities, or fieldwork with no internet access</td></tr>
+        <tr><td><strong>Latency control</strong></td><td>Avoid round-trip network latency; local GPU can be faster than remote API for small models</td></tr>
+        <tr><td><strong>No rate limits</strong></td><td>Burst as hard as your GPU allows</td></tr>
+      </tbody>
+    </table>
+
+    <div class="tip">
+      <strong>Hybrid approach:</strong> Power RAG supports mixing local and cloud models in the same
+      conversation. A common pattern is to use local Ollama for guardrails and embeddings (always-on,
+      low cost) while routing complex reasoning queries to Claude or Gemini.
+    </div>
+
+    <!-- ─── ROLES ─────────────────────────────────────────────────────── -->
+    <h2>The Five LLM Roles in Power RAG</h2>
+    <p>
+      Before picking a model, identify which role it needs to fill. Each role has a different
+      demand profile:
+    </p>
+
+    <div class="pipeline-step">
+      <strong>Role 1 — Embedding</strong> (always-on, every document chunk, every query)<br>
+      Required by: document ingestion, semantic cache lookup, RAG retrieval.<br>
+      Demand: <em>very high throughput, low latency, consistent dimensions</em>. Quality matters less than
+      speed — the model runs thousands of times per document upload.
+    </div>
+
+    <div class="pipeline-step">
+      <strong>Role 2 — Safety Guardrail</strong> (every user query, before any retrieval)<br>
+      Required by: <code>GuardrailService.checkInput()</code>.<br>
+      Demand: <em>fast classification, binary output (safe/unsafe)</em>. Not a general-purpose chat
+      model — purpose-built classifiers dramatically outperform general models here.
+    </div>
+
+    <div class="pipeline-step">
+      <strong>Role 3 — General RAG Chat</strong> (one call per non-cached query)<br>
+      Required by: <code>RagService.callLlm()</code> for document Q&amp;A.<br>
+      Demand: <em>strong instruction following, 24 000+ token context window, ability to cite
+      [SOURCE N] inline</em>. Document parsing generates long contexts — the model must not lose
+      track of citations halfway through.
+    </div>
+
+    <div class="pipeline-step">
+      <strong>Role 4 — Text-to-SQL</strong> (one call per SQL query)<br>
+      Required by: <code>TextToSqlService</code>.<br>
+      Demand: <em>very strong SQL generation, PostgreSQL dialect, understanding of schema descriptions
+      and enum hints</em>. This is where weak models fail most visibly — incorrect SQL causes execution
+      errors that the user sees immediately.
+    </div>
+
+    <div class="pipeline-step">
+      <strong>Role 5 — Image Description</strong> (one call per uploaded image file)<br>
+      Required by: <code>ImageParser</code> during document ingestion.<br>
+      Demand: <em>vision capability, descriptive output</em>. Runs only when image files are ingested,
+      not on every query — latency is less critical than for roles 1–4.
+    </div>
+
+    <!-- ─── ROLE 1: EMBEDDINGS ────────────────────────────────────────── -->
+    <h2>Role 1 — Embedding Models</h2>
+
+    <div class="concept-box">
+      The embedding model is the most performance-critical component in the local stack. It runs
+      synchronously during ingestion (once per chunk) and again on every query (for vector search and
+      semantic cache lookup). A slow embedding model makes the entire application feel unresponsive.
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Dimensions</th>
+          <th>Size</th>
+          <th>Speed (CPU)</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>nomic-embed-text</strong> ⭐ used</td>
+          <td>768</td>
+          <td>274 MB</td>
+          <td>~10 ms/chunk</td>
+          <td>Excellent balance of quality, speed, and size. Default choice.</td>
+        </tr>
+        <tr>
+          <td>mxbai-embed-large</td>
+          <td>1024</td>
+          <td>670 MB</td>
+          <td>~25 ms/chunk</td>
+          <td>Higher quality MTEB scores; requires changing Qdrant dimensions to 1024.</td>
+        </tr>
+        <tr>
+          <td>all-minilm:l6-v2</td>
+          <td>384</td>
+          <td>23 MB</td>
+          <td>~3 ms/chunk</td>
+          <td>Extremely fast and tiny. Lower recall — only for high-volume, latency-sensitive setups.</td>
+        </tr>
+        <tr>
+          <td>snowflake-arctic-embed2</td>
+          <td>1024</td>
+          <td>560 MB</td>
+          <td>~20 ms/chunk</td>
+          <td>State-of-the-art retrieval quality. Good upgrade path from nomic-embed-text.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="warning">
+      <strong>Important:</strong> If you switch from <code>nomic-embed-text</code> to a different
+      model, you <em>must</em> re-ingest all documents and update
+      <code>spring.ai.vectorstore.qdrant.dimensions</code> in <code>application.yml</code>.
+      The Qdrant collection must be deleted and recreated with the new dimension count — vectors
+      from different models are not compatible.
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        application.yml — switching embedding model
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/resources/application.yml" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code># Switch to mxbai-embed-large (better quality, slightly slower)
+spring:
+  ai:
+    ollama:
+      embedding:
+        options:
+          model: mxbai-embed-large   # was: nomic-embed-text
+    vectorstore:
+      qdrant:
+        dimensions: 1024             # was: 768 — must match model output</code></pre>
+    </div>
+
+    <!-- ─── ROLE 2: GUARDRAILS ────────────────────────────────────────── -->
+    <h2>Role 2 — Safety Guardrail Models</h2>
+
+    <p>
+      Guardrail models are purpose-built classifiers, not general-purpose chat models. They are
+      fine-tuned on safety datasets to reliably detect harmful content categories: violence, hate
+      speech, illegal activities, self-harm, discrimination, and exploitation.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Size</th>
+          <th>VRAM (GPU)</th>
+          <th>Latency</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>llama-guard3:8b</strong> ⭐ used</td>
+          <td>4.9 GB</td>
+          <td>6 GB</td>
+          <td>~300 ms GPU / ~2 s CPU</td>
+          <td>Meta's purpose-built safety classifier. Best accuracy. Used in Power RAG.</td>
+        </tr>
+        <tr>
+          <td>llama-guard3:1b</td>
+          <td>0.8 GB</td>
+          <td>2 GB</td>
+          <td>~80 ms GPU / ~500 ms CPU</td>
+          <td>Smaller, faster, slightly lower accuracy. Good for high-traffic deployments.</td>
+        </tr>
+        <tr>
+          <td>shieldgemma:2b</td>
+          <td>1.6 GB</td>
+          <td>3 GB</td>
+          <td>~120 ms GPU / ~800 ms CPU</td>
+          <td>Google's safety classifier. Comparable accuracy to llama-guard3:1b.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="tip">
+      The guardrail model is called on <em>every</em> query before any retrieval. If Ollama is
+      running on CPU-only hardware, <code>llama-guard3:8b</code> adds ~2 seconds to every request.
+      On a GPU with 6 GB VRAM it drops to ~300 ms. If latency is critical and you have no GPU,
+      consider <code>llama-guard3:1b</code> or <code>shieldgemma:2b</code>.
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        GuardrailService.java — model override at call time
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/guardrails/GuardrailService.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>// The guardrail model is set here — change "llama-guard3:8b" to swap it
+String response = llamaGuardClient.prompt()
+    .user(buildGuardrailPrompt(text))
+    .options(OllamaChatOptions.builder()
+        .model("llama-guard3:8b")   // ← change this to switch model
+        .build())
+    .call()
+    .content();</code></pre>
+    </div>
+
+    <!-- ─── ROLE 3: GENERAL CHAT ──────────────────────────────────────── -->
+    <h2>Role 3 — General RAG Chat Models</h2>
+
+    <p>
+      The general chat model handles document Q&amp;A — the core use case of the application.
+      Power RAG sends it up to 24,000 characters of context (retrieved document chunks) plus
+      the user's question. The model must follow citation instructions ([SOURCE N] inline) and
+      maintain coherence across the full context window.
+    </p>
+
+    <div class="concept-box">
+      <strong>Key requirements for this role:</strong>
+      <ul>
+        <li>Context window ≥ 32K tokens (24 000 chars ≈ 6 000–8 000 tokens)</li>
+        <li>Strong instruction following (must cite sources, respond in requested language)</li>
+        <li>Multilingual output (en / zh-CN / zh-TW supported by Power RAG)</li>
+        <li>Reasoning quality sufficient for document synthesis</li>
+      </ul>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Size</th>
+          <th>VRAM</th>
+          <th>Context</th>
+          <th>Speed (GPU tok/s)</th>
+          <th>Quality</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>qwen2.5:7b</strong></td>
+          <td>4.7 GB</td>
+          <td>6 GB</td>
+          <td>128K</td>
+          <td>~60 tok/s</td>
+          <td>★★★★☆ — Excellent for size. Strong multilingual (English + Chinese).</td>
+        </tr>
+        <tr>
+          <td><strong>qwen2.5:14b</strong> ⭐ recommended</td>
+          <td>9.0 GB</td>
+          <td>12 GB</td>
+          <td>128K</td>
+          <td>~35 tok/s</td>
+          <td>★★★★★ — Near-cloud quality. Best open-source option for RAG chat.</td>
+        </tr>
+        <tr>
+          <td>qwen2.5:32b</td>
+          <td>20 GB</td>
+          <td>24 GB</td>
+          <td>128K</td>
+          <td>~18 tok/s</td>
+          <td>★★★★★ — Cloud-grade quality. Requires high-end GPU.</td>
+        </tr>
+        <tr>
+          <td>llama3.1:8b</td>
+          <td>4.9 GB</td>
+          <td>6 GB</td>
+          <td>128K</td>
+          <td>~55 tok/s</td>
+          <td>★★★☆☆ — Good English quality. Weaker multilingual than Qwen.</td>
+        </tr>
+        <tr>
+          <td>llama3.3:70b</td>
+          <td>42 GB</td>
+          <td>48 GB</td>
+          <td>128K</td>
+          <td>~8 tok/s</td>
+          <td>★★★★★ — Exceptional. Requires multi-GPU or Apple M3 Ultra.</td>
+        </tr>
+        <tr>
+          <td>phi4:14b</td>
+          <td>8.9 GB</td>
+          <td>12 GB</td>
+          <td>16K</td>
+          <td>~38 tok/s</td>
+          <td>★★★★☆ — Microsoft research model. Outstanding reasoning per parameter.</td>
+        </tr>
+        <tr>
+          <td>mistral:7b</td>
+          <td>4.1 GB</td>
+          <td>5 GB</td>
+          <td>32K</td>
+          <td>~65 tok/s</td>
+          <td>★★★☆☆ — Fast. Good instruction following. Limited multilingual.</td>
+        </tr>
+        <tr>
+          <td>gemma3:12b</td>
+          <td>8.1 GB</td>
+          <td>10 GB</td>
+          <td>128K</td>
+          <td>~40 tok/s</td>
+          <td>★★★★☆ — Google's open-source model. Strong reasoning and multilingual.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="tip">
+      <strong>Best choice for most setups:</strong> <code>qwen2.5:14b</code> on a 16 GB VRAM GPU
+      (e.g. RTX 4080, RTX 3090). It has native strong Chinese support (important for Power RAG's
+      zh-CN/zh-TW modes), a 128K context window that comfortably holds the 24 000-char RAG context,
+      and near-cloud quality output. Token speed of ~35 tok/s produces a 300-token response in under
+      10 seconds — an acceptable user experience.
+    </div>
+
+    <!-- ─── ROLE 4: TEXT-TO-SQL ───────────────────────────────────────── -->
+    <h2>Role 4 — Text-to-SQL Models</h2>
+
+    <p>
+      Text-to-SQL is the most demanding task for a local model. <code>TextToSqlService</code>
+      sends a full schema description (table names, column types, enum values) plus a natural
+      language question, and expects a correct, syntactically valid PostgreSQL SELECT statement
+      in return. Errors are immediately visible to the user as execution failures.
+    </p>
+
+    <div class="warning">
+      <strong>General 7B models are often insufficient for Text-to-SQL.</strong> They generate
+      plausible-looking SQL that fails on JOINs with aliases, PostgreSQL-specific syntax
+      (ILIKE, ::cast, CTEs), or schema-specific enum values. The performance cliff between
+      a 7B and a 14B+ coder model is significant for this task specifically.
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Size</th>
+          <th>VRAM</th>
+          <th>SQL Accuracy</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>qwen2.5-coder:32b</strong> ⭐ recommended</td>
+          <td>19 GB</td>
+          <td>24 GB</td>
+          <td>★★★★★</td>
+          <td>Best open-source SQL generation. Handles complex JOINs, CTEs, window functions. Already registered in Power RAG as <code>OLLAMA:qwen2.5-coder:32b</code>.</td>
+        </tr>
+        <tr>
+          <td><strong>deepseek-coder-v2:16b</strong> ⭐ used</td>
+          <td>9.1 GB</td>
+          <td>12 GB</td>
+          <td>★★★★☆</td>
+          <td>Excellent SQL quality at 16B. The balanced choice between VRAM and accuracy. Already registered in Power RAG.</td>
+        </tr>
+        <tr>
+          <td>qwen2.5-coder:14b</td>
+          <td>9.0 GB</td>
+          <td>12 GB</td>
+          <td>★★★★☆</td>
+          <td>Strong SQL generation. Comparable to deepseek-coder-v2:16b. Good if you want a single Qwen family across all roles.</td>
+        </tr>
+        <tr>
+          <td>qwen2.5-coder:7b</td>
+          <td>4.7 GB</td>
+          <td>6 GB</td>
+          <td>★★★☆☆</td>
+          <td>Acceptable for simple single-table SELECTs. Struggles with multi-table JOINs and schema-specific enum constraints.</td>
+        </tr>
+        <tr>
+          <td>codellama:34b</td>
+          <td>19 GB</td>
+          <td>24 GB</td>
+          <td>★★★★☆</td>
+          <td>Strong but older (Meta 2023). Qwen2.5-coder and DeepSeek outperform it on modern benchmarks.</td>
+        </tr>
+        <tr>
+          <td>sqlcoder:7b</td>
+          <td>3.8 GB</td>
+          <td>5 GB</td>
+          <td>★★★☆☆</td>
+          <td>Purpose-built for SQL by Defog AI. Good for MySQL/Postgres basic queries; limited on complex schemas or PostgreSQL-specific syntax.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="concept-box">
+      Power RAG's <code>TextToSqlService</code> uses Gemini 2.5 Pro by default — a cloud model
+      with state-of-the-art SQL generation. If you need a fully local Text-to-SQL pipeline,
+      <strong>replace the <code>@Qualifier("geminiPro")</code> in <code>TextToSqlService</code></strong>
+      with a dedicated local coder client.
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">
+        TextToSqlService.java — swapping to a local model
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/sql/TextToSqlService.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>// Current: uses Gemini 2.5 Pro (cloud)
+public TextToSqlService(SchemaIntrospector schemaIntrospector,
+                        SqlValidator sqlValidator,
+                        JdbcTemplate jdbcTemplate,
+                        @Qualifier("geminiPro") ChatClient chatClient) {
+
+// To use local deepseek-coder-v2:16b instead:
+//   1. Register a dedicated bean in SpringAiConfig.java:
+//      @Bean @Qualifier("ollamaDeepSeekSql")
+//      public ChatClient ollamaDeepSeekSqlClient(OllamaChatModel model) {
+//          return ChatClient.builder(model).build();
+//      }
+//   2. Change qualifier here:
+//        @Qualifier("ollamaDeepSeekSql") ChatClient chatClient
+//   3. Override model at call time:
+//        .options(OllamaChatOptions.builder()
+//            .model("deepseek-coder-v2:16b").build())
+}</code></pre>
+    </div>
+
+    <!-- ─── ROLE 5: IMAGE DESCRIPTION ────────────────────────────────── -->
+    <h2>Role 5 — Image Description (Vision Models)</h2>
+
+    <p>
+      <code>ImageParser</code> uses a multimodal LLM to generate text descriptions of image files
+      during document ingestion. The description becomes a text chunk that is embedded and indexed
+      — making image content searchable via RAG. This role runs only during ingestion, not on
+      every query.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Model</th>
+          <th>Size</th>
+          <th>VRAM</th>
+          <th>Vision Quality</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>qwen2.5vl:7b</strong> ⭐ recommended</td>
+          <td>5.5 GB</td>
+          <td>8 GB</td>
+          <td>★★★★★</td>
+          <td>State-of-the-art open-source vision-language model (2025). Excellent at diagrams, charts, screenshots, and technical illustrations.</td>
+        </tr>
+        <tr>
+          <td>llava:13b</td>
+          <td>8.0 GB</td>
+          <td>10 GB</td>
+          <td>★★★☆☆</td>
+          <td>Classic multimodal model. Good general image description but weak on technical charts and data tables.</td>
+        </tr>
+        <tr>
+          <td>minicpm-v:8b</td>
+          <td>5.5 GB</td>
+          <td>7 GB</td>
+          <td>★★★★☆</td>
+          <td>Compact and fast. Surprisingly good on UI screenshots and document images.</td>
+        </tr>
+        <tr>
+          <td>llava-phi3:3.8b</td>
+          <td>2.9 GB</td>
+          <td>4 GB</td>
+          <td>★★★☆☆</td>
+          <td>Very small and fast. Good for simple photos. Weak on complex technical diagrams or dense text.</td>
+        </tr>
+        <tr>
+          <td>gemma3:12b</td>
+          <td>8.1 GB</td>
+          <td>10 GB</td>
+          <td>★★★★☆</td>
+          <td>Google's multimodal model. Strong at reading text within images (OCR-like) and understanding charts.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="tip">
+      For RAG applications that ingest technical documentation with diagrams, architecture charts,
+      or data tables, <strong><code>qwen2.5vl:7b</code></strong> produces significantly richer
+      descriptions than older llava models — resulting in better retrieval when users ask about
+      visual content.
+    </div>
+
+    <!-- ─── HARDWARE REQUIREMENTS ─────────────────────────────────────── -->
+    <h2>Hardware Requirements</h2>
+
+    <div class="concept-box">
+      The key insight: <strong>VRAM determines which models can run at acceptable speed.</strong>
+      CPU inference is viable for embedding and small guardrail models but is 3–10× slower than
+      GPU for chat models, making it unsuitable for interactive use with 7B+ models.
+    </div>
+
+    <h3>GPU VRAM Tiers</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>VRAM</th>
+          <th>Example GPUs</th>
+          <th>What fits</th>
+          <th>User Experience</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>4–6 GB</strong></td>
+          <td>RTX 3060, RTX 4060</td>
+          <td>nomic-embed-text, llama-guard3:1b, qwen2.5:7b (q4)</td>
+          <td>⚠️ Marginal — embeddings fast, guardrail ~500ms, chat ~40s/response. Acceptable for demos.</td>
+        </tr>
+        <tr>
+          <td><strong>8–12 GB</strong></td>
+          <td>RTX 3080, RTX 4070, RTX 4080</td>
+          <td>All of the above + llama-guard3:8b, qwen2.5:14b, deepseek-coder-v2:16b (q4)</td>
+          <td>✅ Good — chat responses in 8–15s. This is the minimum for a comfortable user experience.</td>
+        </tr>
+        <tr>
+          <td><strong>16–24 GB</strong></td>
+          <td>RTX 4090, RTX 3090, A5000</td>
+          <td>All above + qwen2.5-coder:32b, qwen2.5:32b, all vision models</td>
+          <td>✅✅ Excellent — responses in 5–10s. Can run all 5 roles locally simultaneously.</td>
+        </tr>
+        <tr>
+          <td><strong>48–80 GB</strong></td>
+          <td>A100, H100, 2× RTX 4090</td>
+          <td>llama3.3:70b, qwen2.5:72b</td>
+          <td>✅✅✅ Cloud-grade — full 70B models locally. Near-zero latency for smaller models.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Apple Silicon (Unified Memory)</h3>
+    <p>
+      Apple M-series chips use unified memory shared between CPU and GPU. This is excellent for
+      LLMs because the full memory pool is available for model weights:
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Chip / RAM</th>
+          <th>Recommended Models</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>M1 / M2 (8 GB)</td>
+          <td>nomic-embed-text, llama-guard3:1b, qwen2.5:7b</td>
+          <td>⚠️ Tight. Chat model will be slow (~15 tok/s). Embed + guardrail are fine.</td>
+        </tr>
+        <tr>
+          <td>M2 / M3 (16 GB)</td>
+          <td>qwen2.5:14b, deepseek-coder-v2:16b (q4), llama-guard3:8b</td>
+          <td>✅ Good. This is a popular developer configuration. ~25–30 tok/s for 14B models.</td>
+        </tr>
+        <tr>
+          <td>M2 / M3 Pro (32 GB)</td>
+          <td>qwen2.5:32b, qwen2.5-coder:32b, all vision models</td>
+          <td>✅✅ Excellent. Comfortable for all roles. ~18–22 tok/s for 32B models.</td>
+        </tr>
+        <tr>
+          <td>M2 / M3 Max / Ultra (64–192 GB)</td>
+          <td>llama3.3:70b, qwen2.5:72b</td>
+          <td>✅✅✅ Exceptional. Full 70B models run at 12–18 tok/s — production-ready.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>RAM (System Memory) — CPU-Only</h3>
+    <p>If no dedicated GPU is available, Ollama falls back to CPU inference. Minimum requirements:</p>
+    <table>
+      <thead>
+        <tr><th>Model Size</th><th>Min RAM</th><th>CPU Speed</th><th>Practical Use</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>embedding (274 MB)</td><td>4 GB</td><td>~15 ms/embed</td><td>✅ Always use CPU for embeddings if no GPU</td></tr>
+        <tr><td>1–3B models</td><td>8 GB</td><td>~8 tok/s</td><td>✅ Guardrails only — acceptable latency</td></tr>
+        <tr><td>7–8B models</td><td>16 GB</td><td>~3–5 tok/s</td><td>⚠️ Very slow for chat (~60–100s/response)</td></tr>
+        <tr><td>13–14B models</td><td>32 GB</td><td>~1–2 tok/s</td><td>❌ Not viable for interactive use</td></tr>
+      </tbody>
+    </table>
+
+    <!-- ─── RECOMMENDED CONFIGURATIONS ───────────────────────────────── -->
+    <h2>Recommended Configurations by Use Case</h2>
+
+    <h3>Configuration A — Minimum Viable (Developer Laptop, No Dedicated GPU)</h3>
+    <div class="code-block">
+      <div class="code-header">
+        Ollama pull commands — minimum viable local stack
+      </div>
+      <pre><code># Required — always run these locally
+ollama pull nomic-embed-text      # 274 MB — embeddings (CPU-fast)
+ollama pull llama-guard3:1b       # 0.8 GB — guardrails (CPU-ok)
+
+# Chat — use cloud APIs (Claude / Gemini) for actual queries
+# This is the "hybrid" approach: local infrastructure, cloud LLMs
+
+# Minimum Ollama models for Power RAG to start:
+# application.yml: keep ANTHROPIC_API_KEY and GOOGLE_API_KEY set</code></pre>
+    </div>
+
+    <h3>Configuration B — Balanced Local (16 GB VRAM / M3 Pro 32 GB)</h3>
+    <div class="code-block">
+      <div class="code-header">
+        Ollama pull commands — balanced all-local stack
+      </div>
+      <pre><code>ollama pull nomic-embed-text        # Embedding
+ollama pull llama-guard3:8b         # Safety guardrail
+ollama pull qwen2.5:14b             # General RAG chat (primary)
+ollama pull deepseek-coder-v2:16b   # Text-to-SQL
+ollama pull qwen2.5vl:7b            # Image description (ingestion)</code></pre>
+    </div>
+    <p>
+      Update <code>application.yml</code> to default to Qwen2.5:14b and remove cloud API keys
+      if full local isolation is needed:
+    </p>
+    <div class="code-block">
+      <div class="code-header">
+        application.yml — all-local configuration
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/resources/application.yml" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>spring:
+  ai:
+    anthropic:
+      api-key: ""   # leave empty — Anthropic beans will fail-gracefully
+    google:
+      genai:
+        api-key: "" # leave empty
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        options:
+          model: qwen2.5:14b    # default chat model
+      embedding:
+        options:
+          model: nomic-embed-text</code></pre>
+    </div>
+
+    <h3>Configuration C — Maximum Quality (24 GB VRAM / M3 Max 64 GB)</h3>
+    <div class="code-block">
+      <div class="code-header">
+        Ollama pull commands — maximum quality local stack
+      </div>
+      <pre><code>ollama pull nomic-embed-text         # Embedding
+ollama pull llama-guard3:8b          # Safety guardrail
+ollama pull qwen2.5:32b              # General RAG chat
+ollama pull qwen2.5-coder:32b        # Text-to-SQL (excellent accuracy)
+ollama pull qwen2.5vl:7b             # Image description</code></pre>
+    </div>
+
+    <!-- ─── PERFORMANCE TUNING ────────────────────────────────────────── -->
+    <h2>Performance Tuning for User Experience</h2>
+
+    <p>
+      A RAG response involves multiple sequential Ollama calls: guardrail check → optional
+      embedding (if cache miss) → chat LLM. Latency compounds. Here are the most impactful
+      optimisations:
+    </p>
+
+    <div class="pipeline-step">
+      <strong>Tip 1 — Keep models loaded in memory</strong><br>
+      Ollama unloads models after 5 minutes of inactivity by default. The first request after
+      unload takes 5–30s to reload. For production, set:
+      <div class="code-block">
+        <div class="code-header">docker-compose.yml — keep models warm</div>
+        <pre><code>services:
+  ollama:
+    environment:
+      OLLAMA_KEEP_ALIVE: "24h"   # keep all recently-used models in VRAM</code></pre>
+      </div>
+    </div>
+
+    <div class="pipeline-step">
+      <strong>Tip 2 — Use quantised models (Q4_K_M)</strong><br>
+      Ollama automatically uses Q4_K_M quantisation for most models. This halves VRAM usage
+      with &lt;5% quality loss. A 14B model at Q4 fits in 9 GB VRAM instead of 28 GB.
+      Always prefer quantised over full-precision for interactive use.
+    </div>
+
+    <div class="pipeline-step">
+      <strong>Tip 3 — Parallelise embedding and guardrail</strong><br>
+      The guardrail check (Stage 0) and the semantic cache lookup (Stage 1) are independent.
+      If you refactor <code>RagService</code> to call them via <code>CompletableFuture</code>,
+      you save the guardrail latency on cache-hit paths.
+    </div>
+
+    <div class="pipeline-step">
+      <strong>Tip 4 — Tune the semantic cache threshold</strong><br>
+      The cache threshold of 0.92 is conservative. On repeated-query workloads (e.g. a support
+      chatbot), lowering it to 0.88 can dramatically increase cache hit rates at acceptable
+      semantic accuracy. Lower it in <code>application.yml</code>:
+      <div class="code-block">
+        <div class="code-header">application.yml — cache threshold</div>
+        <pre><code>powerrag:
+  models:
+    cache:
+      similarity-threshold: 0.88   # was 0.92 — more aggressive caching</code></pre>
+      </div>
+    </div>
+
+    <!-- ─── SUMMARY TABLE ─────────────────────────────────────────────── -->
+    <h2>Quick Reference — Role to Model Mapping</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Role</th>
+          <th>Current (Power RAG)</th>
+          <th>Local Minimum</th>
+          <th>Local Recommended</th>
+          <th>Local Maximum Quality</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Embedding</td>
+          <td>nomic-embed-text</td>
+          <td>nomic-embed-text</td>
+          <td>nomic-embed-text</td>
+          <td>snowflake-arctic-embed2</td>
+        </tr>
+        <tr>
+          <td>Guardrail</td>
+          <td>llama-guard3:8b</td>
+          <td>llama-guard3:1b</td>
+          <td>llama-guard3:8b</td>
+          <td>llama-guard3:8b</td>
+        </tr>
+        <tr>
+          <td>RAG Chat</td>
+          <td>claude-sonnet-4-6 (cloud)</td>
+          <td>qwen2.5:7b</td>
+          <td>qwen2.5:14b</td>
+          <td>qwen2.5:32b</td>
+        </tr>
+        <tr>
+          <td>Text-to-SQL</td>
+          <td>gemini-2.5-pro (cloud)</td>
+          <td>qwen2.5-coder:7b</td>
+          <td>deepseek-coder-v2:16b</td>
+          <td>qwen2.5-coder:32b</td>
+        </tr>
+        <tr>
+          <td>Image Description</td>
+          <td>claude-sonnet-4-6 (cloud)</td>
+          <td>llava-phi3:3.8b</td>
+          <td>qwen2.5vl:7b</td>
+          <td>gemma3:12b</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="page-nav">
+      <a href="26-observability-logging.html" class="btn-nav">← Previous</a>
+    </div>
+
+  </div>
+</main>
+
+</body>
+</html>

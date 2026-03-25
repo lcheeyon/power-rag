@@ -20,7 +20,8 @@ A production-grade **Retrieval-Augmented Generation (RAG)** platform with a Reac
 12. [Security](#security)
 13. [Testing](#testing)
 14. [Deployment](#deployment)
-15. [Contributing](#contributing)
+15. [Training Materials](#training-materials)
+16. [Contributing](#contributing)
 
 ---
 
@@ -675,6 +676,44 @@ deploy:
           count: all
           capabilities: [gpu]
 ```
+
+---
+
+## Training Materials
+
+A self-contained HTML course — **Spring AI & RAG Development** — is included in the [`training/`](training/) directory. It is aimed at junior Java developers and uses code snippets from this project to explain every concept hands-on.
+
+### How to open
+
+```bash
+# Open locally in your browser — no server required
+open training/index.html          # macOS
+start training/index.html         # Windows
+xdg-open training/index.html      # Linux
+```
+
+Or browse it directly on GitHub:
+[**training/index.html**](https://github.com/lcheeyon/power-rag/blob/main/training/index.html)
+
+### Course Structure
+
+| Module | Topics | Focus |
+|---|---|---|
+| 1 — Foundations | 01–03 | What RAG is, Spring AI abstractions, project setup |
+| 2 — LLM Integration | 04–07 | ChatClient, multiple providers, dynamic routing, prompts |
+| 3 — Document Ingestion | 08–10 | Parsers, chunking strategies, embeddings |
+| 4 — Retrieval | 11–16 | Vector stores, similarity search, FTS, RRF, context assembly |
+| 5 — The Full Pipeline | 17–19 | End-to-end RAG flow, semantic caching, guardrails |
+| 6 — Advanced Features | 20–22 | Multimodal input, image generation, Text-to-SQL |
+| 7 — Production Concerns | 23–24 | JWT security, Flyway migrations |
+| 8 — Quality & Ops | 25–26 | Testing Spring AI apps, observability and logging |
+| 9 — Local AI Infrastructure | 27 | Open-source model selection, hardware requirements, Ollama configs |
+
+Each topic page includes:
+- Concept explanation with diagrams
+- Code snippets with direct links to the source file on GitHub
+- Highlighted callout boxes (concept, tip, warning)
+- Previous / Next navigation
 
 ---
 
