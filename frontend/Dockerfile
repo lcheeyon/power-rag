@@ -6,7 +6,7 @@ COPY package*.json ./
 RUN npm ci --frozen-lockfile
 
 COPY . .
-RUN npm run build
+RUN npx vite build
 
 # ── Runtime stage (Nginx) ─────────────────────────────────────────────────────
 FROM nginx:alpine AS runtime

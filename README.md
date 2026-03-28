@@ -4,24 +4,39 @@ A production-grade **Retrieval-Augmented Generation (RAG)** platform with a Reac
 
 ---
 
+## 🌐 Live Demo
+
+A running instance of Power RAG is deployed on Google Cloud (Singapore region):
+
+| | |
+|---|---|
+| **Demo URL** | <a href="https://power-rag.cheeyonglee.com" target="_blank">https://power-rag.cheeyonglee.com ↗</a> |
+| **Login** | `admin` / `Admin@1234` |
+| **Region** | `asia-southeast1` (Singapore) |
+| **Infrastructure** | GCE `e2-standard-2`, Debian 12, Docker Compose |
+| **TLS** | Signed by Let's Encrypt (auto-renews every 90 days) |
+
+---
+
 ## Table of Contents
 
-1. [Features](#features)
-2. [Architecture Overview](#architecture-overview)
-3. [Technology Stack](#technology-stack)
-4. [Project Structure](#project-structure)
-5. [Prerequisites](#prerequisites)
-6. [Quick Start (Docker)](#quick-start-docker)
-7. [Local Development Setup](#local-development-setup)
-8. [Configuration Reference](#configuration-reference)
-9. [API Reference](#api-reference)
-10. [Database Schema](#database-schema)
-11. [LLM Providers](#llm-providers)
-12. [Security](#security)
-13. [Testing](#testing)
-14. [Deployment](#deployment)
-15. [Training Materials](#training-materials)
-16. [Contributing](#contributing)
+1. [Live Demo](#-live-demo)
+2. [Features](#features)
+3. [Architecture Overview](#architecture-overview)
+4. [Technology Stack](#technology-stack)
+5. [Project Structure](#project-structure)
+6. [Prerequisites](#prerequisites)
+7. [Quick Start (Docker)](#quick-start-docker)
+8. [Local Development Setup](#local-development-setup)
+9. [Configuration Reference](#configuration-reference)
+10. [API Reference](#api-reference)
+11. [Database Schema](#database-schema)
+12. [LLM Providers](#llm-providers)
+13. [Security](#security)
+14. [Testing](#testing)
+15. [Deployment](#deployment)
+16. [Training Materials](#training-materials)
+17. [Contributing](#contributing)
 
 ---
 
@@ -692,8 +707,9 @@ start training/index.html         # Windows
 xdg-open training/index.html      # Linux
 ```
 
-Or open the rendered course directly in your browser:
-[**🎓 Open Training Materials**](https://lcheeyon.github.io/power-rag/training/index.html)
+Or open the rendered course directly in your browser (opens in a new tab):
+
+<a href="https://lcheeyon.github.io/power-rag/training/index.html" target="_blank"><strong>🎓 Open Training Materials ↗</strong></a>
 
 ### Course Structure
 

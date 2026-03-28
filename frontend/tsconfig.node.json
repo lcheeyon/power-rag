@@ -3,10 +3,12 @@
     "target": "ES2022",
     "lib": ["ES2023"],
     "module": "ESNext",
+    "composite": true,
+    "declaration": true,
     "skipLibCheck": true,
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "noEmit": true
+    "allowImportingTsExtensions": false,
+    "types": ["node"]
   },
   "include": ["vite.config.ts", "vitest.config.ts", "playwright.config.ts"]
 }
