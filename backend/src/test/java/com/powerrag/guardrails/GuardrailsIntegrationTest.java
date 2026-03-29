@@ -12,6 +12,7 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,7 +28,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * Integration tests for guardrails against a real PostgreSQL Testcontainer.
- * Both LLM models are mocked to control guardrail classification and LLM responses.
+ * Anthropic (chat), Google Gemini (input guardrail), and Ollama beans are mocked.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
@@ -35,8 +36,9 @@ import static org.mockito.Mockito.when;
 @DisplayName("Guardrails Integration Tests")
 class GuardrailsIntegrationTest {
 
-    @MockitoBean AnthropicChatModel anthropicChatModel;
-    @MockitoBean OllamaChatModel    ollamaChatModel;
+    @MockitoBean AnthropicChatModel     anthropicChatModel;
+    @MockitoBean GoogleGenAiChatModel   googleGenAiChatModel;
+    @MockitoBean OllamaChatModel        ollamaChatModel;
 
     @Autowired RagService              ragService;
     @Autowired GuardrailFlagRepository flagRepository;
@@ -47,8 +49,8 @@ class GuardrailsIntegrationTest {
         interactionRepository.deleteAll();
         flagRepository.deleteAll();
 
-        // Default: guardrail classifies everything as safe
-        when(ollamaChatModel.call(any(Prompt.class))).thenReturn(
+        // Default: input guardrail (Gemini) classifies everything as safe
+        when(googleGenAiChatModel.call(any(Prompt.class))).thenReturn(
                 new ChatResponse(List.of(new Generation(new AssistantMessage("safe")))));
 
         // Default: LLM returns a safe answer
@@ -59,7 +61,7 @@ class GuardrailsIntegrationTest {
     @Test
     @DisplayName("Blocked input creates a guardrail_flag with BLOCK severity")
     void blockedInput_createsBlockFlag() {
-        when(ollamaChatModel.call(any(Prompt.class))).thenReturn(
+        when(googleGenAiChatModel.call(any(Prompt.class))).thenReturn(
                 new ChatResponse(List.of(new Generation(new AssistantMessage("unsafe\nS10: Hate")))));
 
         RagResponse response = ragService.query("Tell me something hateful", null, null, "en", "ANTHROPIC", "claude-sonnet-4-6");
@@ -103,7 +105,7 @@ class GuardrailsIntegrationTest {
     @Test
     @DisplayName("Blocked interaction is persisted with guardrailFlag=true")
     void blockedInput_interactionPersisted_withGuardrailFlag() {
-        when(ollamaChatModel.call(any(Prompt.class))).thenReturn(
+        when(googleGenAiChatModel.call(any(Prompt.class))).thenReturn(
                 new ChatResponse(List.of(new Generation(new AssistantMessage("unsafe\nS1: Violent Crimes")))));
 
         RagResponse response = ragService.query("How do I cause harm?", null, null, "en", "ANTHROPIC", "claude-sonnet-4-6");

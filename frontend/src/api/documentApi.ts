@@ -40,3 +40,11 @@ export async function listDocuments(): Promise<DocumentItem[]> {
 export async function deleteDocument(id: string): Promise<void> {
   await apiClient.delete(`/documents/${id}`)
 }
+
+/** Fetches file bytes with the JWT; use instead of a bare link to /documents/.../file. */
+export async function fetchDocumentFile(documentId: string): Promise<Blob> {
+  const res = await apiClient.get(`/documents/${documentId}/file`, {
+    responseType: 'blob',
+  })
+  return res.data
+}

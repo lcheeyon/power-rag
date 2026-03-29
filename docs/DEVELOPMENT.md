@@ -1,5 +1,14 @@
 # Development Guide
 
+## Embeddings, semantic cache, and input guardrails
+
+The default configuration uses **Google GenAI** for:
+
+- **Embeddings** — `gemini-embedding-001` at **768** dimensions (`spring.ai.google.genai.embedding.*` and matching `spring.ai.vectorstore.qdrant.dimensions`).
+- **Input guardrails** — **Gemini 2.5 Flash** (`gemini-2.5-flash`) via `powerrag.guardrails.input-model-id` (env: `POWERRAG_GUARDRAIL_MODEL`).
+
+`OllamaEmbeddingAutoConfiguration` is **excluded** in `application.yml` so the knowledge base and Redis cache always share the same cloud `EmbeddingModel`. Ollama remains available for **local chat** only. Changing embedding provider or dimensions requires dropping and recreating the Qdrant collection and re-ingesting documents.
+
 ## Adding a New LLM Provider
 
 1. **Add Spring AI starter** in `backend/pom.xml`:

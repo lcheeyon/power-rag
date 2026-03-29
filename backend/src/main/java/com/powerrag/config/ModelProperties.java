@@ -28,9 +28,8 @@ public record ModelProperties(
     ) {}
 
     public record OllamaModels(
-            String coder,      // qwen2.5-coder:32b
-            String deepCoder,  // deepseek-coder-v2:16b
-            String guard       // llama-guard3:8b
+            String coder,      // qwen2.5-coder:7b
+            String deepCoder   // deepseek-coder-v2:16b
     ) {}
 
     public record CacheProperties(

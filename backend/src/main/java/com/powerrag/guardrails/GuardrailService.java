@@ -2,20 +2,21 @@ package com.powerrag.guardrails;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.ollama.api.OllamaChatOptions;
+import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
  * Core guardrail logic:
  * <ul>
- *   <li>Input safety: calls llama-guard3:8b via Ollama; fails open on error.</li>
+ *   <li>Input safety: calls Google Gemini (fast tier, default {@code gemini-2.5-flash}) via Spring AI; fails open on error.</li>
  *   <li>Output PII: pure regex detection and redaction (no LLM call).</li>
  *   <li>Flag logging: persists to {@code guardrail_flags} in a separate transaction.</li>
  * </ul>
@@ -40,27 +41,38 @@ public class GuardrailService {
     @Value("${powerrag.guardrails.enabled:true}")
     private boolean guardrailsEnabled;
 
-    private final ChatClient              llamaGuardClient;
+    private final ChatClient              geminiGuardClient;
     private final GuardrailFlagRepository flagRepository;
+    private final String                  inputModelId;
 
-    public GuardrailService(@Qualifier("ollamaLlamaGuard") ChatClient llamaGuardClient,
-                            GuardrailFlagRepository flagRepository) {
-        this.llamaGuardClient = llamaGuardClient;
-        this.flagRepository   = flagRepository;
+    public GuardrailService(@Qualifier("geminiGuard") ChatClient geminiGuardClient,
+                            GuardrailFlagRepository flagRepository,
+                            @Value("${powerrag.guardrails.input-model-id:gemini-2.5-flash}") String inputModelId) {
+        this.geminiGuardClient = geminiGuardClient;
+        this.flagRepository    = flagRepository;
+        this.inputModelId      = inputModelId;
+    }
+
+    /** Model ID used for input safety classification (e.g. for audit logs). */
+    public String inputModelId() {
+        return inputModelId;
     }
 
     // ── Public API ───────────────────────────────────────────────────────────
 
     /**
-     * Calls llama-guard3:8b to classify the user input.
+     * Calls Gemini to classify the user input against a short safety rubric.
      * Returns {@link GuardrailResult#safe()} on any error (fail-open).
      */
     public GuardrailResult checkInput(String text) {
         if (!guardrailsEnabled || text == null || text.isBlank()) return GuardrailResult.safe();
         try {
-            String response = llamaGuardClient.prompt()
+            String response = geminiGuardClient.prompt()
                     .user(buildGuardrailPrompt(text))
-                    .options(OllamaChatOptions.builder().model("llama-guard3:8b").build())
+                    .options(GoogleGenAiChatOptions.builder()
+                            .model(inputModelId)
+                            .temperature(0.0)
+                            .build())
                     .call()
                     .content();
             return parseGuardrailResponse(response);
@@ -117,18 +129,31 @@ public class GuardrailService {
         return "Evaluate if the following user message violates content safety policies. "
                 + "Categories include violence, hate speech, illegal activities, self-harm, "
                 + "discrimination, and exploitation. "
-                + "Respond with exactly \"safe\" if the message is safe, "
-                + "or \"unsafe\" followed by the violated category on a new line if unsafe.\n"
+                + "Reply with ONLY the single word \"safe\", OR exactly two lines: first line \"unsafe\", "
+                + "second line the violated category. No other explanation.\n"
                 + "Message: " + text;
     }
 
     private GuardrailResult parseGuardrailResponse(String response) {
         if (response == null) return GuardrailResult.safe();
-        String stripped = response.strip();
-        if (stripped.toLowerCase().startsWith("unsafe")) {
-            String[] parts = stripped.split("\\n", 2);
-            String category = parts.length > 1 ? parts[1].strip() : "POLICY_VIOLATION";
-            return GuardrailResult.unsafe(category);
+        java.util.List<String> lines = response.strip().lines()
+                .map(String::strip)
+                .filter(s -> !s.isEmpty())
+                .toList();
+        if (lines.isEmpty()) return GuardrailResult.safe();
+
+        String first = lines.get(0).toLowerCase(Locale.ROOT);
+        if (first.startsWith("unsafe")) {
+            if (lines.size() >= 2) {
+                return GuardrailResult.unsafe(lines.get(1));
+            }
+            String tail = lines.get(0).length() > "unsafe".length()
+                    ? lines.get(0).substring("unsafe".length()).strip().replaceFirst("^[:,-]\\s*", "")
+                    : "";
+            return GuardrailResult.unsafe(tail.isEmpty() ? "POLICY_VIOLATION" : tail);
+        }
+        if (first.equals("safe") || first.startsWith("safe")) {
+            return GuardrailResult.safe();
         }
         return GuardrailResult.safe();
     }

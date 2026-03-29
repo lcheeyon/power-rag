@@ -9,6 +9,18 @@ spring:
       - org.springframework.ai.autoconfigure.vectorstore.qdrant.QdrantVectorStoreAutoConfiguration
 
   ai:
+    google:
+      genai:
+        api-key: test-key-not-real
+        chat:
+          options:
+            model: gemini-2.5-flash
+        embedding:
+          api-key: test-key-not-real
+          text:
+            options:
+              model: gemini-embedding-001
+              dimensions: 768
     anthropic:
       api-key: test-key-not-real
       chat:
@@ -25,7 +37,7 @@ spring:
       base-url: http://localhost:11434
       chat:
         options:
-          model: nomic-embed-text
+          model: qwen2.5-coder:7b
     vectorstore:
       qdrant:
         initialize-schema: true

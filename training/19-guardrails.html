@@ -80,45 +80,40 @@
     <div class="meta">Module 5 · ~11 min read</div>
 
     <div class="concept-box">
-      Power RAG implements two distinct guardrail layers: an <strong>input guardrail</strong> that uses an AI model (llama-guard3) to classify the user's message before any retrieval or LLM call, and an <strong>output guardrail</strong> that scans the LLM's response with regex patterns to detect and redact PII.
+      Power RAG implements two distinct guardrail layers: an <strong>input guardrail</strong> that uses <strong>Gemini 2.5 Flash</strong> (API model id <code>gemini-2.5-flash</code> — Google’s fast 2.5-tier model) to classify the user’s message before any retrieval or main LLM call, and an <strong>output guardrail</strong> that scans the LLM’s response with regex patterns to detect and redact PII.
     </div>
 
-    <h2>Input Guardrail: llama-guard3:8b</h2>
+    <h2>Input Guardrail: Gemini 2.5 Flash</h2>
     <p>
-      <code>llama-guard3:8b</code> is a safety classifier fine-tuned by Meta specifically for content moderation. It runs locally via Ollama, keeping all data on-premises. It classifies inputs across harm categories including violence, hate speech, adult content, and others.
+      Input safety runs through a dedicated <code>@Qualifier("geminiGuard")</code> <code>ChatClient</code> with <strong>no default system prompt</strong>, so the guardrail instructions are not mixed with the main RAG assistant preamble. The model id comes from <code>powerrag.guardrails.input-model-id</code> (default <code>gemini-2.5-flash</code>, overridable with <code>POWERRAG_GUARDRAIL_MODEL</code>). The LLM is asked to reply with <code>safe</code> or <code>unsafe</code> plus a category line; <code>GuardrailService</code> parses that response.
     </p>
 
     <div class="code-block">
       <div class="code-header">
-        GuardrailService.java — checkInput()
+        GuardrailService.java — checkInput() (excerpt)
         <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/guardrails/GuardrailService.java" target="_blank" class="source-link">View source ↗</a>
       </div>
-      <pre><code>public GuardrailResult checkInput(String text) {
-    try {
-        String response = llamaGuardClient.prompt()
-            .user(buildGuardrailPrompt(text))
-            .options(OllamaChatOptions.builder()
-                .model("llama-guard3:8b").build())
-            .call()
-            .content();
-        return parseGuardrailResponse(response);
-    } catch (Exception e) {
-        log.warn("Guardrail check failed, allowing through: {}", e.getMessage());
-        return GuardrailResult.safe(); // fail-open
-    }
-}</code></pre>
+      <pre><code>String response = geminiGuardClient.prompt()
+        .user(buildGuardrailPrompt(text))
+        .options(GoogleGenAiChatOptions.builder()
+                .model(inputModelId)
+                .temperature(0.0)
+                .build())
+        .call()
+        .content();
+return parseGuardrailResponse(response);</code></pre>
     </div>
 
     <h3>Fail-Open Design</h3>
     <p>
-      The <code>catch</code> block returns <code>GuardrailResult.safe()</code> — if the Ollama guardrail model is unavailable (Ollama is down, model not pulled, timeout), the request proceeds rather than blocking all traffic. This is a deliberate <strong>fail-open</strong> design choice: availability is prioritised over perfect safety coverage during an infrastructure outage.
+      On any exception, <code>checkInput</code> returns <code>GuardrailResult.safe()</code> — if the Gemini API is unavailable, misconfigured, or times out, the request proceeds rather than blocking all traffic. This is a deliberate <strong>fail-open</strong> choice: availability is prioritised over perfect safety coverage during an outage.
     </p>
 
     <div class="tip">Fail-open means: when the guardrail fails, allow the request through. Fail-closed would block all requests when the guardrail is unavailable. For a production deployment, consider your risk tolerance: fail-open maintains availability; fail-closed maximises safety enforcement.</div>
 
     <h2>Output Guardrail: PII Regex Detection</h2>
     <p>
-      After the LLM produces its answer, the response is scanned for common PII patterns. If found, the PII is replaced with a placeholder (e.g., <code>[REDACTED-EMAIL]</code>) before the answer is returned to the user.
+      After the LLM produces its answer, the response is scanned for common PII patterns. If found, the PII is replaced with tokens such as <code>[EMAIL REDACTED]</code> before the answer is returned to the user.
     </p>
 
     <div class="code-block">
@@ -159,7 +154,7 @@ public GuardrailFlag logFlag(...) {
         <tr>
           <td>Input</td>
           <td>Safety of user's message</td>
-          <td>llama-guard3:8b (Ollama)</td>
+          <td>Gemini 2.5 Flash (<code>gemini-2.5-flash</code>)</td>
           <td>Block request, log flag</td>
         </tr>
         <tr>

@@ -88,7 +88,7 @@
       Power RAG registers multiple <code>ChatClient</code> beans — one per provider (Claude, Gemini, Ollama). Without disambiguation Spring would throw a <code>NoUniqueBeanDefinitionException</code>. The solution is to annotate each bean with a unique <code>@Qualifier</code> name and annotate the injection point with the same qualifier.
     </p>
 
-    <h2>SpringAiConfig.java — Full Listing</h2>
+    <h2>SpringAiConfig.java — Representative excerpt</h2>
 
     <div class="code-block">
       <div class="code-header">
@@ -116,9 +116,17 @@ public class SpringAiConfig {
                 .build();
     }
 
-    @Bean @Qualifier("ollamaLlamaGuard")
-    public ChatClient ollamaLlamaGuardClient(OllamaChatModel model) {
-        return ChatClient.builder(model).build(); // No system prompt for guardrails
+    /** Input safety only — no default system prompt. */
+    @Bean @Qualifier("geminiGuard")
+    public ChatClient geminiGuardClient(GoogleGenAiChatModel model) {
+        return ChatClient.builder(model).build();
+    }
+
+    @Bean @Qualifier("ollamaQwen")
+    public ChatClient ollamaQwenClient(OllamaChatModel model) {
+        return ChatClient.builder(model)
+                .defaultSystem(SYSTEM_PREAMBLE)
+                .build();
     }
 }</code></pre>
     </div>
@@ -130,9 +138,9 @@ public class SpringAiConfig {
       The <code>claudeSonnetClient</code> bean is annotated with <code>@Primary</code>. This means: when a component injects <code>ChatClient</code> without any <code>@Qualifier</code>, Spring automatically selects this bean. It is the application default.
     </p>
 
-    <h3>@Qualifier("ollamaLlamaGuard")</h3>
+    <h3>@Qualifier("geminiGuard")</h3>
     <p>
-      The Ollama bean is built <em>without</em> a system prompt. This is intentional: the llama-guard3 model is used for safety classification, not for conversational assistance. Injecting a "helpful assistant" system prompt would interfere with its classification output.
+      The guardrail <code>ChatClient</code> is built <em>without</em> a default system prompt. That keeps the safety-classification user message separate from the main RAG assistant preamble. The model id for each call is set in <code>GuardrailService</code> via <code>GoogleGenAiChatOptions</code> (default <code>gemini-2.5-flash</code>).
     </p>
 
     <h3>Constructor parameter injection</h3>
@@ -158,19 +166,19 @@ public class SpringAiConfig {
           <td><code>geminiFlash</code></td>
           <td>Google GenAI</td>
           <td>gemini-2.5-flash</td>
-          <td>Alternative provider for RAG; image generation fallback</td>
+          <td>RAG chat; image generation fallback</td>
         </tr>
         <tr>
-          <td><code>ollamaLlamaGuard</code></td>
-          <td>Ollama</td>
-          <td>llama-guard3:8b</td>
-          <td>Input/output safety classification (guardrails)</td>
+          <td><code>geminiGuard</code></td>
+          <td>Google GenAI</td>
+          <td><code>powerrag.guardrails.input-model-id</code> (default <code>gemini-2.5-flash</code>)</td>
+          <td>Input safety classification only</td>
         </tr>
         <tr>
-          <td><em>dynamic</em></td>
+          <td><code>ollamaQwen</code> / <code>ollamaDeepSeek</code></td>
           <td>Ollama</td>
-          <td>any installed model</td>
-          <td>User-selected Ollama models resolved at runtime</td>
+          <td>configured chat models</td>
+          <td>Local chat when user selects Ollama</td>
         </tr>
       </tbody>
     </table>

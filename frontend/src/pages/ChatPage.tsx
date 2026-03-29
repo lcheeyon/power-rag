@@ -8,7 +8,7 @@ import LanguageToggle from '../components/LanguageToggle'
 import UploadZone from '../components/UploadZone'
 import ChatWindow from '../components/ChatWindow'
 import type { SourceRef } from '../api/chatApi'
-import { listDocuments, deleteDocument } from '../api/documentApi'
+import { listDocuments, deleteDocument, fetchDocumentFile } from '../api/documentApi'
 
 export default function ChatPage() {
   const { t, i18n } = useTranslation()
@@ -16,8 +16,28 @@ export default function ChatPage() {
   const navigate    = useNavigate()
   const queryClient = useQueryClient()
 
-  const [model, setModel]     = useState<ModelOption>(DEFAULT_MODEL)
-  const [sources, setSources] = useState<SourceRef[]>([])
+  const [model, setModel]         = useState<ModelOption>(DEFAULT_MODEL)
+  const [sources, setSources]     = useState<SourceRef[]>([])
+  const [openingDocId, setOpeningDocId] = useState<string | null>(null)
+
+  const openSourceDocument = async (documentId: string, fileName: string) => {
+    setOpeningDocId(documentId)
+    try {
+      const blob = await fetchDocumentFile(documentId)
+      const url  = URL.createObjectURL(blob)
+      const win  = window.open(url, '_blank', 'noopener,noreferrer')
+      if (!win) {
+        const a = document.createElement('a')
+        a.href = url
+        a.download = fileName || 'document'
+        a.rel = 'noopener noreferrer'
+        a.click()
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 120_000)
+    } finally {
+      setOpeningDocId(null)
+    }
+  }
 
   const { data: documents = [] } = useQuery({
     queryKey: ['documents'],
@@ -173,15 +193,15 @@ export default function ChatPage() {
                     data-testid="source-item"
                   >
                     {src.documentId ? (
-                      <a
-                        href={`/api/documents/${src.documentId}/file`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-indigo-400 font-medium truncate block hover:text-indigo-300 hover:underline"
+                      <button
+                        type="button"
+                        onClick={() => openSourceDocument(src.documentId!, src.fileName)}
+                        disabled={openingDocId === src.documentId}
+                        className="text-left w-full text-indigo-400 font-medium truncate block hover:text-indigo-300 hover:underline disabled:opacity-50 disabled:cursor-wait"
                         title="Open document in new tab"
                       >
                         {src.fileName} ↗
-                      </a>
+                      </button>
                     ) : (
                       <p className="text-indigo-400 font-medium truncate">{src.fileName}</p>
                     )}

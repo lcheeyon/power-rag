@@ -12,6 +12,7 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -44,14 +45,15 @@ class RagIntegrationTest {
     @Autowired DocumentIngestionService ingestionService;
     @Autowired InteractionRepository   interactionRepository;
 
-    @MockitoBean AnthropicChatModel anthropicChatModel;
-    /** Mocked so GuardrailService.checkInput() never tries to connect to a real Ollama server. */
-    @MockitoBean OllamaChatModel    ollamaChatModel;
+    @MockitoBean AnthropicChatModel   anthropicChatModel;
+    /** Mocked so GuardrailService never calls the real Gemini API for input safety. */
+    @MockitoBean GoogleGenAiChatModel googleGenAiChatModel;
+    @MockitoBean OllamaChatModel      ollamaChatModel;
 
     @BeforeEach
     void configureMock() {
-        // Guardrail model: classify all input as safe
-        when(ollamaChatModel.call(any(Prompt.class))).thenReturn(
+        // Input guardrail (Gemini): classify all input as safe
+        when(googleGenAiChatModel.call(any(Prompt.class))).thenReturn(
                 new ChatResponse(List.of(new Generation(new AssistantMessage("safe")))));
         // LLM model: return a canned answer
         when(anthropicChatModel.call(any(Prompt.class))).thenReturn(

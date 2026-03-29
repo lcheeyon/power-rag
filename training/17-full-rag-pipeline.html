@@ -95,9 +95,9 @@
     <div class="pipeline-step">
       <div class="step-num">0</div>
       <div class="step-body">
-        <div class="step-title">Input safety check via llama-guard3:8b</div>
+        <div class="step-title">Input safety check via Gemini 2.5 Flash</div>
         <div class="step-desc">
-          <code>GuardrailService.checkInput(question)</code> sends the user's message to the locally-running llama-guard3:8b model. The model classifies the text as safe or unsafe across multiple harm categories.
+          <code>GuardrailService.checkInput(question)</code> sends the user's message to Google Gemini (<code>gemini-2.5-flash</code> by default). The model classifies the text as safe or unsafe; categories are parsed from the model reply.
           <br><br>
           <strong>BLOCK path:</strong> If the input is flagged, the service returns a rejection response and logs a record to the <code>guardrail_flags</code> table. The request never reaches retrieval or the LLM.
           <br><br>

@@ -14,7 +14,7 @@ import java.util.Map;
  * Sliding-window chunking: splits each section's text into overlapping word-based windows.
  *
  * <p>Words (whitespace-split tokens) are used as the unit rather than sub-word tokens,
- * which is a reasonable approximation for nomic-embed-text's 512-token context window.
+ * which is a reasonable approximation for typical embedding model context limits.
  */
 @Component
 public class SlidingWindowChunkingStrategy implements ChunkingStrategy {

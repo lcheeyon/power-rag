@@ -11,7 +11,7 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.ollama.OllamaChatModel;
+import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
@@ -26,7 +26,7 @@ import static org.mockito.Mockito.when;
 public class GuardrailsSteps {
 
     @Autowired
-    private OllamaChatModel ollamaChatModel;
+    private GoogleGenAiChatModel googleGenAiChatModel;
 
     @Autowired
     private AnthropicChatModel anthropicChatModel;
@@ -46,13 +46,13 @@ public class GuardrailsSteps {
 
     @Given("the guardrail model classifies input as safe")
     public void theGuardrailModelClassifiesInputAsSafe() {
-        when(ollamaChatModel.call(any(Prompt.class))).thenReturn(
+        when(googleGenAiChatModel.call(any(Prompt.class))).thenReturn(
                 new ChatResponse(List.of(new Generation(new AssistantMessage("safe")))));
     }
 
     @Given("the guardrail model classifies input as unsafe with category {string}")
     public void theGuardrailModelClassifiesInputAsUnsafe(String category) {
-        when(ollamaChatModel.call(any(Prompt.class))).thenReturn(
+        when(googleGenAiChatModel.call(any(Prompt.class))).thenReturn(
                 new ChatResponse(List.of(new Generation(new AssistantMessage("unsafe\n" + category)))));
     }
 

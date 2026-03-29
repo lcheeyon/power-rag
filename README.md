@@ -50,7 +50,7 @@ A running instance of Power RAG is deployed on Google Cloud (Singapore region):
 | **Image Generation** | Generate images via Google Imagen 3 or Gemini Flash (intent detection from natural language) |
 | **Multi-LLM** | Claude Opus/Sonnet/Haiku, Gemini 2.5 Pro/Flash/Flash-Lite, Ollama (Qwen, DeepSeek) |
 | **Semantic Cache** | Redis-backed vector cache (cosine threshold 0.92, 24 h TTL) eliminates redundant LLM calls |
-| **Guardrails** | Input/output safety classification via `llama-guard3:8b`; PII redaction on output |
+| **Guardrails** | Input safety via **Gemini 2.5 Flash** (`gemini-2.5-flash`); output PII detection via regex + redaction |
 | **Text-to-SQL** | Natural language → validated, read-only SQL against a live PostgreSQL schema |
 | **Multilingual** | English, Simplified Chinese, Traditional Chinese UI + LLM response language |
 | **Auth** | JWT-based auth with `USER` / `ADMIN` roles |
@@ -72,7 +72,7 @@ Browser (React 18 + Vite)
 │        ▼
 │   RagService (Spring Boot 3.5)
 │   ┌────────────────────────────────────────────────────┐
-│   │ 1. Input Guardrail  (llama-guard3:8b via Ollama)   │
+│   │ 1. Input Guardrail  (Gemini 2.5 Flash via Google GenAI) │
 │   │ 2. Semantic Cache   (Redis Stack / RedisVectorStore)│
 │   │ 3. Image Generation (Imagen 3 / Gemini Flash-img)  │
 │   │ 4. Hybrid Retrieval                                │
@@ -97,7 +97,7 @@ Browser (React 18 + Vite)
     DocumentIngestionService
     ├─ Parser     (PDF/Word/Excel/PPT/Java/Image)
     ├─ Chunker    (Sliding-window, 512 words, 64 overlap)
-    ├─ Embedder   (nomic-embed-text via Ollama)
+    ├─ Embedder   (gemini-embedding-001 via Google GenAI, 768-dim)
     ├─ Qdrant     (vector storage)
     └─ PostgreSQL (chunk metadata + FTS)
 ```
@@ -114,9 +114,10 @@ Browser (React 18 + Vite)
 │                      AI / LLM Layer                         │
 │  Ollama (local)    │  Anthropic API  │  Google AI Studio    │
 │  ├ qwen2.5-coder      ├ claude-opus      ├ gemini-2.5-pro   │
-│  ├ deepseek-coder     ├ claude-sonnet    ├ gemini-2.5-flash  │
-│  ├ llama-guard3       └ claude-haiku     ├ imagen-3.0        │
-│  └ nomic-embed-text                      └ gemini-flash-img  │
+│  └ deepseek-coder     ├ claude-sonnet    ├ gemini-2.5-flash  │
+│                       └ claude-haiku     ├ gemini-embedding-001 (KB + cache) │
+│                                          ├ imagen-3.0        │
+│                                          └ gemini-flash-img  │
 └─────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────┐
 │                     Application Layer                        │
@@ -169,7 +170,7 @@ Browser (React 18 + Vite)
 | PostgreSQL | 16-alpine | Relational DB (users, docs, interactions, grants) |
 | Qdrant | 1.13.4 | Vector database for embeddings |
 | Redis Stack | 7.4.0 | Semantic cache (RedisVectorStore) |
-| Ollama | latest | Local LLM + embedding model runtime |
+| Ollama | latest | Local chat models (optional; embeddings use Google GenAI) |
 
 ---
 
@@ -202,7 +203,7 @@ power_rag/
 │       ├── config/                # Spring beans (AI, security, vector store)
 │       ├── domain/                # JPA entities + Spring Data repositories
 │       ├── feedback/              # Feedback service
-│       ├── guardrails/            # Input/output safety (llama-guard3)
+│       ├── guardrails/            # Input safety (Gemini Flash) + output PII
 │       ├── ingestion/             # Document parsing + chunking + embedding
 │       │   ├── parser/            # PDF, Word, Excel, PPT, Java, Image parsers
 │       │   ├── chunking/          # SlidingWindowChunkingStrategy
@@ -263,7 +264,7 @@ Before you begin, ensure you have the following installed:
 | Provider | Sign-up | Used for |
 |---|---|---|
 | [Anthropic](https://console.anthropic.com) | Free trial available | Claude Opus, Sonnet, Haiku |
-| [Google AI Studio](https://aistudio.google.com) | Free tier available | Gemini Pro/Flash + Imagen 3 |
+| [Google AI Studio](https://aistudio.google.com) | Free tier available | Gemini chat/Flash, **embeddings** (`gemini-embedding-001`), **input guardrails** (`gemini-2.5-flash`), Imagen 3 |
 
 ---
 
@@ -283,10 +284,9 @@ cp .env.example .env
 # 3. Pull and start all services
 docker compose up -d
 
-# 4. Pull required Ollama models (first run only — ~2–5 GB download)
-docker exec powerrag-ollama ollama pull nomic-embed-text
-docker exec powerrag-ollama ollama pull llama-guard3:8b
+# 4. Pull Ollama chat models if you use local LLMs (optional — ~GB-scale download)
 docker exec powerrag-ollama ollama pull qwen2.5-coder:7b
+# Knowledge-base vectors and semantic cache use Google gemini-embedding-001; input guardrails use gemini-2.5-flash — set GOOGLE_API_KEY in .env.
 
 # 5. Open the app
 open http://localhost:3000
@@ -311,13 +311,13 @@ docker compose up -d postgres redis-stack qdrant ollama
 docker compose ps
 ```
 
-### Step 2 — Pull Ollama models
+### Step 2 — (Optional) Pull Ollama chat models
 
 ```bash
-ollama pull nomic-embed-text   # Embedding model (required)
-ollama pull llama-guard3:8b    # Guardrails model (required)
-ollama pull qwen2.5-coder:7b   # Chat model (optional — can use cloud LLMs)
+ollama pull qwen2.5-coder:7b   # Default local chat model (optional if you only use Claude/Gemini)
 ```
+
+Embeddings for Qdrant ingestion and the semantic cache, plus input guardrails, use the **Google GenAI** API (`GOOGLE_API_KEY`). Ollama embedding autoconfiguration is disabled in this project.
 
 ### Step 3 — Backend
 
@@ -389,12 +389,14 @@ Navigate to `http://localhost:3000` and log in with:
 | `spring.ai.google.genai.api-key` | `${GOOGLE_API_KEY}` | Google AI Studio key |
 | `spring.ai.google.genai.chat.options.model` | `gemini-2.5-flash` | Base Gemini model |
 | `spring.ai.ollama.base-url` | `http://localhost:11434` | Ollama endpoint |
-| `spring.ai.ollama.chat.options.model` | `qwen2.5-coder:7b` | Default Ollama model |
-| `spring.ai.ollama.embedding.options.model` | `nomic-embed-text` | Embedding model |
+| `spring.ai.ollama.chat.options.model` | `qwen2.5-coder:7b` | Default Ollama chat model |
+| `spring.ai.google.genai.embedding.text.options.model` | `gemini-embedding-001` | Embedding model for Qdrant + cache |
+| `spring.ai.google.genai.embedding.text.options.dimensions` | `768` | Must match Qdrant collection |
+| `powerrag.guardrails.input-model-id` | `gemini-2.5-flash` | Input safety model (override with `POWERRAG_GUARDRAIL_MODEL`) |
 | `spring.ai.vectorstore.qdrant.host` | `localhost` | Qdrant host |
 | `spring.ai.vectorstore.qdrant.port` | `6334` | Qdrant gRPC port |
 | `spring.ai.vectorstore.qdrant.collection-name` | `power_rag_docs` | Qdrant collection |
-| `spring.ai.vectorstore.qdrant.dimensions` | `768` | nomic-embed-text dimension |
+| `spring.ai.vectorstore.qdrant.dimensions` | `768` | Must match embedding output (768 for configured Gemini embeddings) |
 | `spring.data.redis.host` | `localhost` | Redis host |
 | `powerrag.jwt.expiration-ms` | `86400000` | JWT TTL (24 h) |
 | `powerrag.ingestion.chunk-size` | `512` | Chunk size in words |
@@ -410,7 +412,8 @@ Navigate to `http://localhost:3000` and log in with:
 | Variable | Required | Description |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | Yes (for Claude) | Anthropic API key |
-| `GOOGLE_API_KEY` | Yes (for Gemini/Imagen) | Google AI Studio API key |
+| `GOOGLE_API_KEY` | Yes (Gemini chat, **embeddings**, **guardrails**, Imagen) | Google AI Studio API key |
+| `POWERRAG_GUARDRAIL_MODEL` | No | Override input guard model (default `gemini-2.5-flash`) |
 | `JWT_SECRET` | Yes | Min 32-char JWT signing secret |
 | `PG_USER` | No (default: `powerrag`) | PostgreSQL username |
 | `PG_PASSWORD` | No (default: `powerrag_secret`) | PostgreSQL password |
@@ -538,14 +541,14 @@ The schema is managed by Flyway and applied automatically on startup.
 |---|---|---|---|
 | Anthropic | `claude-opus-4-6` | Powerful reasoning | Best for complex analysis |
 | Anthropic | `claude-sonnet-4-6` | Balanced ⭐ default | Best price/performance |
-| Anthropic | `claude-haiku-4-5-20251001` | Fast | Used as guardrail fallback |
+| Anthropic | `claude-haiku-4-5-20251001` | Fast | Low-latency Claude option |
 | Google | `gemini-2.5-pro` | Powerful | Default for Text-to-SQL |
 | Google | `gemini-2.5-flash` | Balanced | Good for most queries |
 | Google | `gemini-2.5-flash-lite` | Fast | Low-latency queries |
 | Ollama | `qwen2.5-coder:7b` | Code analysis | Local, no API key needed |
 | Ollama | `deepseek-coder-v2:16b` | Code Q&A | Local |
-| Ollama | `llama-guard3:8b` | **Guardrails** | Required for safety checks |
-| Ollama | `nomic-embed-text` | **Embeddings** | Required for ingestion |
+| Google | `gemini-embedding-001` | **Embeddings** | Qdrant + semantic cache (768-dim); needs `GOOGLE_API_KEY` |
+| Google | `gemini-2.5-flash` | **Input guardrails** | Fast safety classification; configurable via `powerrag.guardrails` |
 | Google | `imagen-3.0-generate-002` | Image generation | Requires API key |
 | Google | `gemini-2.0-flash-preview-image-generation` | Image generation | Fallback |
 
@@ -576,10 +579,10 @@ The frontend `ModelSelector` lets the user pick any provider/model per conversat
 
 ### Guardrails
 
-Every query passes through two guardrail stages powered by `llama-guard3:8b`:
+Every query passes through two guardrail stages:
 
-1. **Input guardrail** — blocks harmful prompts before any retrieval or LLM call.
-2. **Output guardrail** — detects and redacts PII in LLM responses.
+1. **Input guardrail** — **Gemini 2.5 Flash** (`gemini-2.5-flash`, Google’s fast 2.5-tier model) classifies the user message; harmful prompts are blocked before retrieval or the main LLM call. On API errors the service **fails open** (allows the request).
+2. **Output guardrail** — regex-based PII detection and redaction on the model response (no extra LLM call).
 
 Blocked interactions are logged to `guardrail_flags` with the triggering category.
 
@@ -625,7 +628,7 @@ Key test files:
 - `RagServiceTest` — core RAG pipeline (happy path, cache, guardrails, LLM failure)
 - `HybridRetrieverTest` — RRF merge logic
 - `SemanticCacheIntegrationTest` — Redis cache round-trips
-- `GuardrailsIntegrationTest` — Ollama llama-guard integration
+- `GuardrailsIntegrationTest` — guardrail pipeline with stubbed Gemini calls
 - `TextToSqlServiceTest` / `TextToSqlIntegrationTest` — SQL generation
 - `DocumentIngestionIntegrationTest` — end-to-end ingest → retrieve
 

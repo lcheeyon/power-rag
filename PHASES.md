@@ -29,7 +29,8 @@
 │  └─────────────┘                                                       │
 │                                                                        │
 │  Spring AI 1.1.2 ── ChatClient beans (Claude Sonnet ★, Gemini Flash,  │
-│                      Ollama Qwen/DeepSeek/LlamaGuard)                  │
+│                      Ollama Qwen/DeepSeek; embeddings + input guard  │
+│                      via Google GenAI)                                 │
 └────┬────────────────────┬─────────────────────┬────────────────────────┘
      │                    │                     │
 ┌────▼───┐  ┌─────────────▼──┐  ┌──────────────▼─────┐
@@ -39,10 +40,13 @@
 └────────┘  └────────────────┘  └────────────────────┘
      │
 ┌────▼────────────────────┐
-│  Ollama (local)         │
-│  nomic-embed-text       │  ← embeddings
-│  llama-guard3:8b        │  ← guardrails
-│  qwen2.5-coder:32b      │  ← code Q&A
+│  Google AI (API)        │
+│  gemini-embedding-001   │  ← Qdrant + semantic cache (768-dim)
+│  gemini-2.5-flash       │  ← input safety (guardrails)
+└─────────────────────────┘
+┌─────────────────────────┐
+│  Ollama (local, opt.)   │
+│  qwen2.5-coder / etc.   │  ← chat when user picks Ollama
 └─────────────────────────┘
 ```
 
@@ -58,7 +62,7 @@
 | 4     | Semantic Cache              | ⏳ Pending  | Redis vector cache, TTL, language-aware keying        |
 | 5     | Text-to-SQL                 | ⏳ Pending  | SchemaIntrospector, SqlValidator, PostgreSQL executor |
 | 6     | Multilingual Support        | ⏳ Pending  | ZH-CN / EN prompt routing, language detection        |
-| 7     | Guardrails                  | ⏳ Pending  | LlamaGuard3 input/output filter, PII redaction       |
+| 7     | Guardrails                  | ⏳ Pending  | Gemini 2.5 Flash input check, regex PII on output    |
 | 8     | Interaction Audit + Feedback| ⏳ Pending  | AuditService, FeedbackService, admin dashboard API   |
 | 9     | Frontend Development        | ⏳ Pending  | ChatWindow, UploadZone, AdminDashboard, E2E flows     |
 | 10    | Testing & Hardening         | ⏳ Pending  | JMeter load test, ZAP scan, multilingual eval        |
@@ -70,7 +74,7 @@
 
 ### Goal
 Accept file uploads (.java, .pdf, .xlsx, .docx), parse each format into text chunks with
-rich metadata, embed via `nomic-embed-text`, and store in Qdrant for later RAG retrieval.
+rich metadata, embed via `gemini-embedding-001` (768 dimensions), and store in Qdrant for later RAG retrieval.
 
 ### Architecture
 
@@ -346,13 +350,11 @@ All prompts, cache keys, and audit records are language-tagged.
 ## Phase 7 — Guardrails
 
 ### Goal
-Filter discriminatory / biased inputs and outputs via `llama-guard3:8b`.
-Block harmful inputs before LLM call; intercept biased outputs before delivery.
-All violations written to `guardrail_flags` table.
+Classify unsafe inputs with **Gemini 2.5 Flash** (`gemini-2.5-flash`) before retrieval/LLM; detect PII in outputs with regex and redact. Fail open if the guard model errors. All violations written to `guardrail_flags`.
 
 ### Key Components
-- `InputGuardrailAdvisor` — Spring AI `ChatClient.Advisor`
-- `OutputGuardrailAdvisor` — Spring AI `ChatClient.Advisor`
+- `GuardrailService` — Gemini input prompt + parse; regex output PII
+- `InputGuardrailAdvisor` / `OutputGuardrailAdvisor` — Spring AI `CallAdvisor` hooks
 - `GuardrailFlagRepository` — persistence
 
 ---

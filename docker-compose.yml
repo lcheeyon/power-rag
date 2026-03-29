@@ -55,7 +55,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── Ollama (local LLM + embeddings) ────────────────────────────────────────
+  # ── Ollama (local chat models; KB embeddings use Google GenAI in app config) ─
   ollama:
     image: ollama/ollama:latest
     container_name: powerrag-ollama

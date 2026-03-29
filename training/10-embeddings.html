@@ -91,15 +91,14 @@
       Two text fragments with similar meaning will have vectors that are close in this 768-dimensional space, measured by cosine similarity. "Car costs" and "automobile pricing" are semantically similar — their vectors will be close even though they share no words.
     </p>
 
-    <h2>nomic-embed-text</h2>
+    <h2>gemini-embedding-001</h2>
     <p>
-      Power RAG uses <code>nomic-embed-text</code>, an open-source embedding model that runs locally via Ollama. Key properties:
+      Power RAG uses Google’s <code>gemini-embedding-001</code> through Spring AI’s Google GenAI integration. The app requests <strong>768-dimensional</strong> vectors so they align with the Qdrant collection (the API default is higher; dimensions are set explicitly in config). Ollama embedding autoconfiguration is <strong>excluded</strong> so the knowledge base and semantic cache always use the same cloud embedding model.
     </p>
     <ul>
-      <li><strong>768 dimensions</strong> — matches the Qdrant collection configuration</li>
-      <li><strong>No API cost</strong> — runs entirely on your machine</li>
-      <li><strong>Strong performance</strong> — competitive with commercial embedding APIs on most benchmarks</li>
-      <li><strong>Max input:</strong> ~8192 tokens</li>
+      <li><strong>768 dimensions</strong> — must match <code>spring.ai.vectorstore.qdrant.dimensions</code></li>
+      <li><strong>Requires <code>GOOGLE_API_KEY</code></strong> — same key as Gemini chat / Imagen in this project</li>
+      <li><strong>Consistent vectors</strong> — ingestion, hybrid retrieval, and Redis semantic cache share one <code>EmbeddingModel</code> bean</li>
     </ul>
 
     <h2>The Embedding Pipeline</h2>
@@ -109,7 +108,7 @@
   "The Q3 revenue increased by 15% year-over-year"
        │
        ▼
-  nomic-embed-text (via Ollama)
+  gemini-embedding-001 (Google GenAI)
        │
        ▼
   float[768]
@@ -125,7 +124,7 @@
   User question: "What was Q3 revenue growth?"
        │
        ▼
-  nomic-embed-text
+  gemini-embedding-001
        │
        ▼
   float[768]  ← query vector
@@ -137,36 +136,38 @@
 
     <h2>How Spring AI Wires It</h2>
     <p>
-      The Ollama embedding starter auto-creates an <code>EmbeddingModel</code> bean. <code>VectorStoreConfig</code> receives this bean and passes it to the <code>QdrantVectorStore</code> — which calls it automatically when you add documents or run searches. You never call the embedding model directly in application code.
+      The Google GenAI starter provides the <code>EmbeddingModel</code> bean. <code>VectorStoreConfig</code> passes it to <code>QdrantVectorStore</code>, which embeds chunks on ingest and embeds the query at search time. The semantic cache service uses the same bean for cache lookup and storage.
     </p>
 
     <div class="code-block">
       <div class="code-header">
-        application.yml — embedding configuration
+        application.yml — embedding configuration (excerpt)
         <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/resources/application.yml" target="_blank" class="source-link">View source ↗</a>
       </div>
       <pre><code>spring:
+  autoconfigure:
+    exclude: org.springframework.ai.model.ollama.autoconfigure.OllamaEmbeddingAutoConfiguration
   ai:
-    ollama:
-      embedding:
-        options:
-          model: nomic-embed-text
+    google:
+      genai:
+        api-key: ${GOOGLE_API_KEY:}
+        embedding:
+          api-key: ${GOOGLE_API_KEY:}
+          text:
+            options:
+              model: gemini-embedding-001
+              dimensions: 768
     vectorstore:
       qdrant:
-        dimensions: 768  # must match nomic-embed-text output</code></pre>
+        dimensions: 768  # must match embedding output</code></pre>
     </div>
 
-    <div class="warning">The <code>dimensions</code> value in the Qdrant config must exactly match the output dimensionality of your embedding model. If you switch embedding models, you must recreate the Qdrant collection with the new dimension count — existing vectors are incompatible.</div>
+    <div class="warning">The <code>dimensions</code> value in the Qdrant config must exactly match the embedding output size. If you change models or dimensions, drop and recreate the Qdrant collection — existing vectors are not compatible.</div>
 
-    <h2>Why nomic-embed-text Over a Cloud API?</h2>
+    <h2>Trade-offs: managed embeddings vs local</h2>
     <p>
-      Cloud embedding APIs (OpenAI, Cohere) are excellent but add cost and latency for every document ingested. Since Power RAG is designed as a self-hosted reference implementation:
+      Using Google’s embedding API adds network latency and per-token cost, but keeps one consistent model for dev, CI, and production and avoids running a separate embedding stack. For strict air-gapped deployments you could swap in a local <code>EmbeddingModel</code> and recreate the collection; the Spring AI abstractions stay the same.
     </p>
-    <ul>
-      <li>All ingestion happens locally — no per-document API cost</li>
-      <li>Data stays on-premises — important for sensitive documents</li>
-      <li>Ollama makes switching to a different local model trivial (one config change)</li>
-    </ul>
 
     <div class="page-nav">
       <a href="09-chunking-strategies.html" class="btn-nav">← Previous</a>

@@ -80,11 +80,11 @@
     <div class="meta">Module 9 · ~18 min read</div>
 
     <div class="concept-box">
-      Power RAG uses Ollama to run several open-source models locally. Each model serves a
-      different role in the pipeline — embedding, safety classification, general chat, code
-      analysis, image description, or SQL generation — and each role has different accuracy
-      and latency requirements. This topic maps every role to the best open-source candidates
-      and gives concrete hardware guidance so you know what to buy or provision.
+      <strong>Default stack:</strong> Knowledge-base and cache embeddings use Google
+      <code>gemini-embedding-001</code> (768-dim); input safety uses <strong>Gemini 2.5 Flash</strong>
+      (<code>gemini-2.5-flash</code>). Ollama is for <strong>optional local chat</strong> (e.g. Qwen, DeepSeek)
+      when the user picks an Ollama model. This topic still maps open-source models to pipeline roles
+      if you move embeddings or guardrails off the cloud, and gives hardware guidance for local LLMs.
     </div>
 
     <!-- ─── WHY LOCAL ────────────────────────────────────────────────── -->
@@ -102,9 +102,9 @@
     </table>
 
     <div class="tip">
-      <strong>Hybrid approach:</strong> Power RAG supports mixing local and cloud models in the same
-      conversation. A common pattern is to use local Ollama for guardrails and embeddings (always-on,
-      low cost) while routing complex reasoning queries to Claude or Gemini.
+      <strong>Hybrid approach:</strong> You can use cloud APIs for embeddings + guardrails (as in the
+      reference <code>application.yml</code>) and Ollama only for chat, or reconfigure to run more of the
+      stack locally — at the cost of maintaining compatible embedding dimensions and extra VRAM.
     </div>
 
     <!-- ─── ROLES ─────────────────────────────────────────────────────── -->
@@ -115,17 +115,16 @@
     </p>
 
     <div class="pipeline-step">
-      <strong>Role 1 — Embedding</strong> (always-on, every document chunk, every query)<br>
-      Required by: document ingestion, semantic cache lookup, RAG retrieval.<br>
-      Demand: <em>very high throughput, low latency, consistent dimensions</em>. Quality matters less than
-      speed — the model runs thousands of times per document upload.
+      <strong>Role 1 — Embedding</strong> (every chunk at ingest, every query for dense search + semantic cache)<br>
+      <strong>Default:</strong> Google <code>gemini-embedding-001</code> at 768 dimensions (requires <code>GOOGLE_API_KEY</code>).<br>
+      Required by: document ingestion, semantic cache, Qdrant hybrid retrieval.<br>
+      Demand: <em>high throughput, stable dimensionality</em> aligned with <code>spring.ai.vectorstore.qdrant.dimensions</code>.
     </div>
 
     <div class="pipeline-step">
-      <strong>Role 2 — Safety Guardrail</strong> (every user query, before any retrieval)<br>
-      Required by: <code>GuardrailService.checkInput()</code>.<br>
-      Demand: <em>fast classification, binary output (safe/unsafe)</em>. Not a general-purpose chat
-      model — purpose-built classifiers dramatically outperform general models here.
+      <strong>Role 2 — Safety Guardrail</strong> (every user query, before retrieval / main LLM)<br>
+      <strong>Default:</strong> <strong>Gemini 2.5 Flash</strong> via <code>GuardrailService</code> (<code>powerrag.guardrails.input-model-id</code>).<br>
+      Demand: <em>fast classification</em> and a consistent <code>safe</code> / <code>unsafe</code> response format.
     </div>
 
     <div class="pipeline-step">
@@ -155,9 +154,9 @@
     <h2>Role 1 — Embedding Models</h2>
 
     <div class="concept-box">
-      The embedding model is the most performance-critical component in the local stack. It runs
-      synchronously during ingestion (once per chunk) and again on every query (for vector search and
-      semantic cache lookup). A slow embedding model makes the entire application feel unresponsive.
+      In the reference project, embeddings are <strong>not</strong> local: they go through Google GenAI.
+      If you switch to a local <code>EmbeddingModel</code>, you must remove the Ollama embedding autoconfig
+      exclusion (or equivalent), set Qdrant <code>dimensions</code> to match the new model, and re-ingest all documents.
     </div>
 
     <table>
@@ -172,11 +171,18 @@
       </thead>
       <tbody>
         <tr>
-          <td><strong>nomic-embed-text</strong> ⭐ used</td>
+          <td><strong>gemini-embedding-001</strong> ⭐ default (cloud)</td>
+          <td>768 (configured)</td>
+          <td>API</td>
+          <td>network-bound</td>
+          <td>Used in Power RAG via Spring AI Google GenAI; same model for Qdrant + Redis cache.</td>
+        </tr>
+        <tr>
+          <td><strong>nomic-embed-text</strong> (local option)</td>
           <td>768</td>
           <td>274 MB</td>
           <td>~10 ms/chunk</td>
-          <td>Excellent balance of quality, speed, and size. Default choice.</td>
+          <td>Common Ollama choice if you self-host embeddings; must re-enable Ollama embedding autoconfig and match dimensions.</td>
         </tr>
         <tr>
           <td>mxbai-embed-large</td>
@@ -197,43 +203,40 @@
           <td>1024</td>
           <td>560 MB</td>
           <td>~20 ms/chunk</td>
-          <td>State-of-the-art retrieval quality. Good upgrade path from nomic-embed-text.</td>
+          <td>State-of-the-art retrieval quality; good upgrade path from smaller local embedders.</td>
         </tr>
       </tbody>
     </table>
 
     <div class="warning">
-      <strong>Important:</strong> If you switch from <code>nomic-embed-text</code> to a different
-      model, you <em>must</em> re-ingest all documents and update
-      <code>spring.ai.vectorstore.qdrant.dimensions</code> in <code>application.yml</code>.
-      The Qdrant collection must be deleted and recreated with the new dimension count — vectors
-      from different models are not compatible.
+      <strong>Important:</strong> Changing embedding model or dimension count requires deleting the Qdrant
+      collection, updating <code>spring.ai.vectorstore.qdrant.dimensions</code>, and full re-ingestion.
     </div>
 
     <div class="code-block">
       <div class="code-header">
-        application.yml — switching embedding model
-        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/resources/application.yml" target="_blank" class="source-link">View source ↗</a>
+        Example — local Ollama embedding (illustrative; not the repo default)
       </div>
-      <pre><code># Switch to mxbai-embed-large (better quality, slightly slower)
+      <pre><code># You would remove OllamaEmbeddingAutoConfiguration from spring.autoconfigure.exclude,
+# then align dimensions, e.g.:
 spring:
   ai:
     ollama:
       embedding:
         options:
-          model: mxbai-embed-large   # was: nomic-embed-text
+          model: mxbai-embed-large
     vectorstore:
       qdrant:
-        dimensions: 1024             # was: 768 — must match model output</code></pre>
+        dimensions: 1024</code></pre>
     </div>
 
     <!-- ─── ROLE 2: GUARDRAILS ────────────────────────────────────────── -->
     <h2>Role 2 — Safety Guardrail Models</h2>
 
     <p>
-      Guardrail models are purpose-built classifiers, not general-purpose chat models. They are
-      fine-tuned on safety datasets to reliably detect harmful content categories: violence, hate
-      speech, illegal activities, self-harm, discrimination, and exploitation.
+      <strong>Shipped default:</strong> <strong>Gemini 2.5 Flash</strong> (<code>gemini-2.5-flash</code>) — fast,
+      low temperature, and suitable for a short rubric response. The table below lists <strong>local</strong>
+      Ollama classifiers if you replace the <code>geminiGuard</code> client with an Ollama-based flow.
     </p>
 
     <table>
@@ -248,11 +251,18 @@ spring:
       </thead>
       <tbody>
         <tr>
-          <td><strong>llama-guard3:8b</strong> ⭐ used</td>
+          <td><strong>Gemini 2.5 Flash</strong> ⭐ default (cloud)</td>
+          <td>API</td>
+          <td>—</td>
+          <td>network-bound</td>
+          <td>Power RAG default via <code>GoogleGenAiChatOptions</code> in <code>GuardrailService</code>.</td>
+        </tr>
+        <tr>
+          <td><strong>llama-guard3:8b</strong> (local option)</td>
           <td>4.9 GB</td>
           <td>6 GB</td>
           <td>~300 ms GPU / ~2 s CPU</td>
-          <td>Meta's purpose-built safety classifier. Best accuracy. Used in Power RAG.</td>
+          <td>Meta safety classifier; viable if you refactor guardrails back to Ollama.</td>
         </tr>
         <tr>
           <td>llama-guard3:1b</td>
@@ -272,25 +282,21 @@ spring:
     </table>
 
     <div class="tip">
-      The guardrail model is called on <em>every</em> query before any retrieval. If Ollama is
-      running on CPU-only hardware, <code>llama-guard3:8b</code> adds ~2 seconds to every request.
-      On a GPU with 6 GB VRAM it drops to ~300 ms. If latency is critical and you have no GPU,
-      consider <code>llama-guard3:1b</code> or <code>shieldgemma:2b</code>.
+      Input guardrails run on <em>every</em> chat query. With the default Gemini path, latency is mostly
+      one round-trip to the Google API. If you use a local Ollama classifier instead, CPU-only hardware
+      can add seconds per request unless you size the model down (e.g. <code>llama-guard3:1b</code>).
     </div>
 
     <div class="code-block">
       <div class="code-header">
-        GuardrailService.java — model override at call time
+        GuardrailService.java — model id at call time (excerpt)
         <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/guardrails/GuardrailService.java" target="_blank" class="source-link">View source ↗</a>
       </div>
-      <pre><code>// The guardrail model is set here — change "llama-guard3:8b" to swap it
-String response = llamaGuardClient.prompt()
-    .user(buildGuardrailPrompt(text))
-    .options(OllamaChatOptions.builder()
-        .model("llama-guard3:8b")   // ← change this to switch model
-        .build())
-    .call()
-    .content();</code></pre>
+      <pre><code>// inputModelId defaults to gemini-2.5-flash; override with POWERRAG_GUARDRAIL_MODEL
+.options(GoogleGenAiChatOptions.builder()
+        .model(inputModelId)
+        .temperature(0.0)
+        .build())</code></pre>
     </div>
 
     <!-- ─── ROLE 3: GENERAL CHAT ──────────────────────────────────────── -->
@@ -576,8 +582,8 @@ public TextToSqlService(SchemaIntrospector schemaIntrospector,
 
     <div class="concept-box">
       The key insight: <strong>VRAM determines which models can run at acceptable speed.</strong>
-      CPU inference is viable for embedding and small guardrail models but is 3–10× slower than
-      GPU for chat models, making it unsuitable for interactive use with 7B+ models.
+      CPU inference is viable for small local classifiers but is 3–10× slower than GPU for 7B+ chat
+      models, making CPU-only setups painful for interactive Ollama chat.
     </div>
 
     <h3>GPU VRAM Tiers</h3>
@@ -594,13 +600,13 @@ public TextToSqlService(SchemaIntrospector schemaIntrospector,
         <tr>
           <td><strong>4–6 GB</strong></td>
           <td>RTX 3060, RTX 4060</td>
-          <td>nomic-embed-text, llama-guard3:1b, qwen2.5:7b (q4)</td>
-          <td>⚠️ Marginal — embeddings fast, guardrail ~500ms, chat ~40s/response. Acceptable for demos.</td>
+          <td>qwen2.5:7b (q4), small local guard classifiers if used</td>
+          <td>⚠️ Marginal — chat ~40s/response on CPU. OK for demos with cloud embeddings/guardrails.</td>
         </tr>
         <tr>
           <td><strong>8–12 GB</strong></td>
           <td>RTX 3080, RTX 4070, RTX 4080</td>
-          <td>All of the above + llama-guard3:8b, qwen2.5:14b, deepseek-coder-v2:16b (q4)</td>
+          <td>qwen2.5:14b, deepseek-coder-v2:16b (q4), larger local guard models if used</td>
           <td>✅ Good — chat responses in 8–15s. This is the minimum for a comfortable user experience.</td>
         </tr>
         <tr>
@@ -634,12 +640,12 @@ public TextToSqlService(SchemaIntrospector schemaIntrospector,
       <tbody>
         <tr>
           <td>M1 / M2 (8 GB)</td>
-          <td>nomic-embed-text, llama-guard3:1b, qwen2.5:7b</td>
+          <td>qwen2.5:7b, small local guard classifiers if used</td>
           <td>⚠️ Tight. Chat model will be slow (~15 tok/s). Embed + guardrail are fine.</td>
         </tr>
         <tr>
           <td>M2 / M3 (16 GB)</td>
-          <td>qwen2.5:14b, deepseek-coder-v2:16b (q4), llama-guard3:8b</td>
+          <td>qwen2.5:14b, deepseek-coder-v2:16b (q4), larger local guard models if used</td>
           <td>✅ Good. This is a popular developer configuration. ~25–30 tok/s for 14B models.</td>
         </tr>
         <tr>
@@ -662,7 +668,7 @@ public TextToSqlService(SchemaIntrospector schemaIntrospector,
         <tr><th>Model Size</th><th>Min RAM</th><th>CPU Speed</th><th>Practical Use</th></tr>
       </thead>
       <tbody>
-        <tr><td>embedding (274 MB)</td><td>4 GB</td><td>~15 ms/embed</td><td>✅ Always use CPU for embeddings if no GPU</td></tr>
+        <tr><td>small local embedder (~300 MB)</td><td>4 GB</td><td>~15 ms/embed</td><td>✅ CPU OK for tiny embedding models only</td></tr>
         <tr><td>1–3B models</td><td>8 GB</td><td>~8 tok/s</td><td>✅ Guardrails only — acceptable latency</td></tr>
         <tr><td>7–8B models</td><td>16 GB</td><td>~3–5 tok/s</td><td>⚠️ Very slow for chat (~60–100s/response)</td></tr>
         <tr><td>13–14B models</td><td>32 GB</td><td>~1–2 tok/s</td><td>❌ Not viable for interactive use</td></tr>
@@ -677,15 +683,11 @@ public TextToSqlService(SchemaIntrospector schemaIntrospector,
       <div class="code-header">
         Ollama pull commands — minimum viable local stack
       </div>
-      <pre><code># Required — always run these locally
-ollama pull nomic-embed-text      # 274 MB — embeddings (CPU-fast)
-ollama pull llama-guard3:1b       # 0.8 GB — guardrails (CPU-ok)
+      <pre><code># Default stack: set GOOGLE_API_KEY (embeddings + input guard + Gemini chat as needed)
+# Ollama optional — only if you want local chat models, e.g.:
+# ollama pull qwen2.5-coder:7b
 
-# Chat — use cloud APIs (Claude / Gemini) for actual queries
-# This is the "hybrid" approach: local infrastructure, cloud LLMs
-
-# Minimum Ollama models for Power RAG to start:
-# application.yml: keep ANTHROPIC_API_KEY and GOOGLE_API_KEY set</code></pre>
+# Hybrid: cloud embeddings/guardrails + local Ollama chat — no nomic/llama-guard pulls required</code></pre>
     </div>
 
     <h3>Configuration B — Balanced Local (16 GB VRAM / M3 Pro 32 GB)</h3>
@@ -693,36 +695,29 @@ ollama pull llama-guard3:1b       # 0.8 GB — guardrails (CPU-ok)
       <div class="code-header">
         Ollama pull commands — balanced all-local stack
       </div>
-      <pre><code>ollama pull nomic-embed-text        # Embedding
-ollama pull llama-guard3:8b         # Safety guardrail
+      <pre><code># If fully local beyond chat, add your own embedding + guard Ollama models and reconfigure.
 ollama pull qwen2.5:14b             # General RAG chat (primary)
 ollama pull deepseek-coder-v2:16b   # Text-to-SQL
 ollama pull qwen2.5vl:7b            # Image description (ingestion)</code></pre>
     </div>
     <p>
-      Update <code>application.yml</code> to default to Qwen2.5:14b and remove cloud API keys
-      if full local isolation is needed:
+      Full local isolation requires replacing Google embedding and guardrail beans, not just emptying API keys.
+      For chat-only local default while keeping Google embeddings/guardrails, point Ollama at your preferred model:
     </p>
     <div class="code-block">
       <div class="code-header">
-        application.yml — all-local configuration
-        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/resources/application.yml" target="_blank" class="source-link">View source ↗</a>
+        application.yml — emphasise local chat (embeddings still Google unless you change them)
       </div>
       <pre><code>spring:
   ai:
-    anthropic:
-      api-key: ""   # leave empty — Anthropic beans will fail-gracefully
-    google:
-      genai:
-        api-key: "" # leave empty
     ollama:
       base-url: http://localhost:11434
       chat:
         options:
-          model: qwen2.5:14b    # default chat model
-      embedding:
-        options:
-          model: nomic-embed-text</code></pre>
+          model: qwen2.5:14b
+    google:
+      genai:
+        api-key: ${GOOGLE_API_KEY}  # still required for gemini-embedding-001 + guardrails</code></pre>
     </div>
 
     <h3>Configuration C — Maximum Quality (24 GB VRAM / M3 Max 64 GB)</h3>
@@ -730,9 +725,7 @@ ollama pull qwen2.5vl:7b            # Image description (ingestion)</code></pre>
       <div class="code-header">
         Ollama pull commands — maximum quality local stack
       </div>
-      <pre><code>ollama pull nomic-embed-text         # Embedding
-ollama pull llama-guard3:8b          # Safety guardrail
-ollama pull qwen2.5:32b              # General RAG chat
+      <pre><code>ollama pull qwen2.5:32b              # General RAG chat
 ollama pull qwen2.5-coder:32b        # Text-to-SQL (excellent accuracy)
 ollama pull qwen2.5vl:7b             # Image description</code></pre>
     </div>
@@ -741,9 +734,8 @@ ollama pull qwen2.5vl:7b             # Image description</code></pre>
     <h2>Performance Tuning for User Experience</h2>
 
     <p>
-      A RAG response involves multiple sequential Ollama calls: guardrail check → optional
-      embedding (if cache miss) → chat LLM. Latency compounds. Here are the most impactful
-      optimisations:
+      A RAG response chains several steps: input guard (Gemini by default) → cache lookup (embedding API) →
+      retrieval (embedding again) → main LLM. When using Ollama for chat, keep models warm — latency compounds.
     </p>
 
     <div class="pipeline-step">
@@ -802,14 +794,14 @@ ollama pull qwen2.5vl:7b             # Image description</code></pre>
       <tbody>
         <tr>
           <td>Embedding</td>
+          <td>gemini-embedding-001 (cloud, 768-dim)</td>
           <td>nomic-embed-text</td>
-          <td>nomic-embed-text</td>
-          <td>nomic-embed-text</td>
+          <td>nomic-embed-text / mxbai-embed-large</td>
           <td>snowflake-arctic-embed2</td>
         </tr>
         <tr>
           <td>Guardrail</td>
-          <td>llama-guard3:8b</td>
+          <td>Gemini 2.5 Flash (<code>gemini-2.5-flash</code>)</td>
           <td>llama-guard3:1b</td>
           <td>llama-guard3:8b</td>
           <td>llama-guard3:8b</td>

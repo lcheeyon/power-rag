@@ -13,13 +13,13 @@ User Query
     │
     ▼  Stage 0 ─────────────────────────────────────────────────
     │  Input Guardrail (GuardrailService)
-    │  • Sends query to llama-guard3:8b via Ollama
+    │  • Sends query to Gemini 2.5 Flash (API id gemini-2.5-flash) via Spring AI
     │  • BLOCK → returns 403-equivalent response + logs to guardrail_flags
     │  • PASS  → continues
     │
     ▼  Stage 1 ─────────────────────────────────────────────────
     │  Semantic Cache Lookup (SemanticCache → Redis)
-    │  • Embeds query with nomic-embed-text
+    │  • Embeds query with gemini-embedding-001 (768-dim)
     │  • Performs Redis vector search (cosine similarity ≥ 0.92)
     │  • HIT  → returns cached answer immediately (saves ~2–10 s LLM call)
     │  • MISS → continues
@@ -84,7 +84,7 @@ The `HybridRetriever` combines two independent search paths and merges them with
 ```
 Query
   ├─► Dense Search (Qdrant)
-  │     nomic-embed-text embeds query (768-dim)
+  │     gemini-embedding-001 embeds query (768-dim)
   │     Qdrant cosine similarity search → top-2K results
   │     Each result ranked by position: score += 1 / (rank + 1 + 60)
   │
@@ -124,7 +124,7 @@ DocumentIngestionService.ingest()
     │     Preserves all section metadata on each chunk
     │
     ├─► VectorStore.add() (Qdrant via Spring AI)
-    │     Embeds chunk text with nomic-embed-text
+    │     Embeds chunk text with gemini-embedding-001 (768-dim)
     │     Stores vector + metadata payload in Qdrant
     │
     └─► DocumentChunkRepository.saveAll() (PostgreSQL)
@@ -140,7 +140,7 @@ The semantic cache avoids duplicate LLM calls for semantically equivalent querie
 
 ```
 lookup(question, lang):
-    1. Embed question with nomic-embed-text (768-dim)
+    1. Embed question with gemini-embedding-001 (768-dim)
     2. Redis VSEARCH on "powerrag:cache:{lang}" index
     3. Find nearest neighbour with cosine score ≥ 0.92
     4. HIT: deserialise CacheHit (answer, confidence, sources, modelId)
@@ -200,8 +200,9 @@ SpringAiConfig
 ├─ claudeHaiku   → AnthropicChatModel (claude-haiku-4-5...)
 ├─ geminiFlash   → GoogleGenAiChatModel (base, model overridden per-request)
 ├─ geminiPro     → GoogleGenAiChatModel (base, model overridden per-request)
-├─ ollamaQwen    → OllamaChatModel (model overridden per-request)
-└─ ollamaLlamaGuard → OllamaChatModel (no system prompt, for guardrails)
+├─ geminiFlashLite → GoogleGenAiChatModel (base, model overridden per-request)
+├─ geminiGuard   → GoogleGenAiChatModel (no default system prompt — input safety only)
+└─ ollamaQwen / ollamaDeepSeek → OllamaChatModel (model overridden per-request)
 ```
 
 **Dynamic routing** in `RagService.resolveClient()` + `callLlm()`:

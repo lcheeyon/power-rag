@@ -41,12 +41,11 @@ public class TestContainersConfig {
     }
 
     /**
-     * No-op VectorStore named "qdrantVectorStore" for tests where Qdrant autoconfigure is excluded.
-     * HybridRetriever uses @Qualifier("qdrantVectorStore") so it always gets this bean in tests.
-     * Not created when the real Qdrant bean is present (production).
+     * No-op VectorStore for tests where Qdrant autoconfigure is excluded.
+     * HybridRetriever uses {@code @Qualifier("vectorStore")} — same qualifier as Spring AI Qdrant autoconfig.
      */
-    @Bean("qdrantVectorStore")
-    @ConditionalOnMissingBean(name = "qdrantVectorStore")
+    @Bean("vectorStore")
+    @ConditionalOnMissingBean(name = "vectorStore")
     public VectorStore noOpVectorStore() {
         return new VectorStore() {
             @Override public void add(List<Document> documents) {}

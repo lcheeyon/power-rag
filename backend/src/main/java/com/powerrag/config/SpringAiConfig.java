@@ -77,6 +77,16 @@ public class SpringAiConfig {
                 .build();
     }
 
+    /**
+     * Input safety classification only — no default system prompt so the guardrail user message
+     * is not mixed with the main RAG assistant preamble.
+     */
+    @Bean
+    @Qualifier("geminiGuard")
+    public ChatClient geminiGuardClient(GoogleGenAiChatModel model) {
+        return ChatClient.builder(model).build();
+    }
+
     // ── Ollama ─────────────────────────────────────────────────────────────
 
     @Bean
@@ -95,14 +105,4 @@ public class SpringAiConfig {
                 .build();
     }
 
-    /**
-     * Dedicated client for llama-guard3:8b guardrail classification.
-     * No system prompt — llama-guard uses its own classification format.
-     * Model is overridden at call time via OllamaChatOptions.
-     */
-    @Bean
-    @Qualifier("ollamaLlamaGuard")
-    public ChatClient ollamaLlamaGuardClient(OllamaChatModel model) {
-        return ChatClient.builder(model).build();
-    }
 }

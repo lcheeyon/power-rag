@@ -143,31 +143,40 @@
         <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/resources/application.yml" target="_blank" class="source-link">View source ↗</a>
       </div>
       <pre><code>spring:
+  autoconfigure:
+    exclude: org.springframework.ai.model.ollama.autoconfigure.OllamaEmbeddingAutoConfiguration
   ai:
     anthropic:
       api-key: ${ANTHROPIC_API_KEY:}
       chat:
         options:
           model: claude-sonnet-4-6
-          max-tokens: 8096
-          temperature: 0.7
     google:
       genai:
         api-key: ${GOOGLE_API_KEY:}
         chat:
           options:
             model: gemini-2.5-flash
+        embedding:
+          text:
+            options:
+              model: gemini-embedding-001
+              dimensions: 768
     ollama:
       base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
-      embedding:
+      chat:
         options:
-          model: nomic-embed-text
+          model: qwen2.5-coder:7b
     vectorstore:
       qdrant:
         host: ${QDRANT_HOST:localhost}
         port: ${QDRANT_PORT:6334}
         collection-name: power_rag_docs
-        dimensions: 768</code></pre>
+        dimensions: 768
+
+powerrag:
+  guardrails:
+    input-model-id: ${POWERRAG_GUARDRAIL_MODEL:gemini-2.5-flash}</code></pre>
     </div>
 
     <div class="warning">Never commit real API keys. Use environment variables with the <code>${KEY:default}</code> syntax. In production, inject secrets via your CI/CD pipeline or a secrets manager — never via checked-in configuration files.</div>
@@ -183,21 +192,21 @@
 
     <h3>Google GenAI (Gemini)</h3>
     <ul>
-      <li>Default model: <code>gemini-2.5-flash</code> — fast with large context window</li>
-      <li>The same bean is used for both chat and image generation</li>
+      <li>Default chat model: <code>gemini-2.5-flash</code></li>
+      <li>Embeddings: <code>gemini-embedding-001</code> at <strong>768 dimensions</strong> for Qdrant and the semantic cache</li>
+      <li>Input guardrails: default <code>gemini-2.5-flash</code> via <code>powerrag.guardrails.input-model-id</code> (Gemini 2.5 Flash — Google’s fast tier)</li>
     </ul>
 
     <h3>Ollama (Local Models)</h3>
     <ul>
-      <li><code>base-url</code> defaults to <code>http://localhost:11434</code> — standard Ollama port</li>
-      <li>Embedding model: <code>nomic-embed-text</code> — produces 768-dimensional vectors</li>
-      <li>Guardrails model: <code>llama-guard3:8b</code> — overridden per-request via <code>OllamaChatOptions</code></li>
+      <li><code>base-url</code> defaults to <code>http://localhost:11434</code></li>
+      <li>Used for <strong>chat</strong> when the user selects Ollama (e.g. <code>qwen2.5-coder:7b</code>); embedding autoconfig is excluded</li>
     </ul>
 
     <h3>Qdrant Vector Store</h3>
     <ul>
       <li>Port <code>6334</code> is the gRPC port used by Spring AI (not the REST port 6333)</li>
-      <li><code>dimensions: 768</code> must match the embedding model output — nomic-embed-text produces exactly 768 dims</li>
+      <li><code>dimensions: 768</code> must match the configured Google embedding output</li>
       <li><code>collection-name: power_rag_docs</code> — this collection is auto-created by Spring AI on startup</li>
     </ul>
 

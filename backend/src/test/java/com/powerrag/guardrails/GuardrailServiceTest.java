@@ -10,6 +10,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.UUID;
 
@@ -22,7 +23,7 @@ import static org.mockito.Mockito.*;
 @DisplayName("GuardrailService Unit Tests")
 class GuardrailServiceTest {
 
-    @Mock ChatClient                llamaGuardClient;
+    @Mock ChatClient                geminiGuardClient;
     @Mock ChatClient.ChatClientRequestSpec requestSpec;
     @Mock ChatClient.CallResponseSpec      callSpec;
     @Mock GuardrailFlagRepository   flagRepository;
@@ -31,9 +32,11 @@ class GuardrailServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new GuardrailService(llamaGuardClient, flagRepository);
+        service = new GuardrailService(geminiGuardClient, flagRepository, "gemini-2.5-flash");
+        // @Value fields are not injected without Spring; default false would skip all LLM calls.
+        ReflectionTestUtils.setField(service, "guardrailsEnabled", true);
         // Wire ChatClient fluent chain
-        lenient().when(llamaGuardClient.prompt()).thenReturn(requestSpec);
+        lenient().when(geminiGuardClient.prompt()).thenReturn(requestSpec);
         lenient().when(requestSpec.user(anyString())).thenReturn(requestSpec);
         lenient().when(requestSpec.options(any())).thenReturn(requestSpec);
         lenient().when(requestSpec.call()).thenReturn(callSpec);
@@ -69,7 +72,7 @@ class GuardrailServiceTest {
     @Test
     @DisplayName("checkInput: LLM throws exception → fails open (safe)")
     void checkInput_llmException_failsOpen() {
-        when(llamaGuardClient.prompt()).thenThrow(new RuntimeException("Ollama unavailable"));
+        when(geminiGuardClient.prompt()).thenThrow(new RuntimeException("Gemini unavailable"));
         assertThat(service.checkInput("test").passed()).isTrue();
     }
 
@@ -78,14 +81,14 @@ class GuardrailServiceTest {
     @DisplayName("checkInput: blank/empty input → safe without calling LLM")
     void checkInput_blank_safeWithoutLlmCall(String input) {
         assertThat(service.checkInput(input).passed()).isTrue();
-        verify(llamaGuardClient, never()).prompt();
+        verify(geminiGuardClient, never()).prompt();
     }
 
     @Test
     @DisplayName("checkInput: null input → safe without calling LLM")
     void checkInput_null_safe() {
         assertThat(service.checkInput(null).passed()).isTrue();
-        verify(llamaGuardClient, never()).prompt();
+        verify(geminiGuardClient, never()).prompt();
     }
 
     // ── checkOutput ─────────────────────────────────────────────────────────

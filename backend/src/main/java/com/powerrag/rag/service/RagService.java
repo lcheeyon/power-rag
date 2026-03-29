@@ -133,7 +133,7 @@ public class RagService {
                     .user(user).sessionId(session)
                     .queryText(question).queryLanguage(lang)
                     .responseText(BLOCKED_MSG).responseLanguage(lang)
-                    .modelProvider("GUARDRAIL").modelId("llama-guard3:8b")
+                    .modelProvider("GUARDRAIL").modelId(guardrailService.inputModelId())
                     .confidence(0.0).sources(List.of()).cacheHit(false)
                     .guardrailFlag(true).flagReason("INPUT_BLOCKED: " + inputCheck.category())
                     .durationMs((int) Math.min(durationMs, Integer.MAX_VALUE))
