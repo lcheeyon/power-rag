@@ -16,6 +16,7 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # SPA routing: redirect all requests to index.html
 RUN printf 'server {\n\
     listen 80;\n\
+    client_max_body_size 100m;\n\
     root /usr/share/nginx/html;\n\
     index index.html;\n\
     location / {\n\
@@ -23,6 +24,9 @@ RUN printf 'server {\n\
     }\n\
     location /api {\n\
         proxy_pass http://backend:8080;\n\
+        proxy_read_timeout 300s;\n\
+        proxy_connect_timeout 300s;\n\
+        proxy_send_timeout 300s;\n\
     }\n\
 }\n' > /etc/nginx/conf.d/default.conf
 

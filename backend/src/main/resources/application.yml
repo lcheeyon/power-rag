@@ -2,6 +2,9 @@ spring:
   application:
     name: power-rag
 
+  autoconfigure:
+    exclude: org.springframework.ai.model.ollama.autoconfigure.OllamaEmbeddingAutoConfiguration
+
   servlet:
     multipart:
       max-file-size: 200MB
@@ -57,6 +60,13 @@ spring:
           options:
             model: gemini-2.5-flash
             temperature: 0.7
+        embedding:
+          api-key: ${GOOGLE_API_KEY:}
+          text:
+            options:
+              model: gemini-embedding-001
+              # Must match spring.ai.vectorstore.qdrant.dimensions (768). API default is 3072.
+              dimensions: 768
 
     retry:
       max-attempts: 1        # fail-fast — GuardrailService catches and allows through
@@ -68,9 +78,6 @@ spring:
         options:
           model: qwen2.5-coder:7b
           temperature: 0.7
-      embedding:
-        options:
-          model: nomic-embed-text
 
     # Qdrant vector store (knowledge base)
     vectorstore:

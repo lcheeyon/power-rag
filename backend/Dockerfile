@@ -2,21 +2,28 @@
 FROM eclipse-temurin:25-jdk-alpine AS build
 WORKDIR /app
 
-COPY pom.xml .
-COPY src ./src
+# Cache apk packages across builds (never re-downloads JDK tooling)
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk add --update maven
 
-# Download dependencies (cached layer)
-RUN apk add --no-cache maven && \
+COPY pom.xml .
+
+# Cache Maven local repo across builds (never re-downloads dependencies unless pom.xml changes)
+RUN --mount=type=cache,target=/root/.m2 \
     mvn dependency:go-offline -q
 
-# Build, skip tests in Docker build (tests run in CI pipeline)
-RUN mvn package -DskipTests -q
+COPY src ./src
+
+# Build — reuses cached .m2 repo
+RUN --mount=type=cache,target=/root/.m2 \
+    mvn package -DskipTests -q
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM eclipse-temurin:25-jre-alpine AS runtime
 WORKDIR /app
 
-RUN addgroup -S powerrag && adduser -S powerrag -G powerrag
+RUN addgroup -S powerrag && adduser -S powerrag -G powerrag && \
+    mkdir -p /app/uploads && chown powerrag:powerrag /app/uploads
 USER powerrag
 
 COPY --from=build /app/target/*.jar app.jar

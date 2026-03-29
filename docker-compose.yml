@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   # ── PostgreSQL ──────────────────────────────────────────────────────────────
   postgres:
@@ -50,8 +48,9 @@ services:
       - qdrant_data:/qdrant/storage
     environment:
       QDRANT__SERVICE__GRPC_PORT: 6334
+    # Qdrant image has no curl/wget; verify REST port accepts connections.
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:6333/healthz || exit 1"]
+      test: ["CMD-SHELL", "timeout 2 bash -c 'echo >/dev/tcp/127.0.0.1/6333' || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -65,8 +64,9 @@ services:
       - "11434:11434"
     volumes:
       - ollama_models:/root/.ollama
+    # Ollama image has no curl; verify API port accepts connections.
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/version || exit 1"]
+      test: ["CMD-SHELL", "timeout 2 bash -c 'echo >/dev/tcp/127.0.0.1/11434' || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 5
@@ -111,7 +111,7 @@ services:
       ollama:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 5

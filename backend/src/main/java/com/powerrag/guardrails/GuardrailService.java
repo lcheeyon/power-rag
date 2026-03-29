@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,9 @@ public class GuardrailService {
 
     private static final int RAW_CONTENT_MAX_LEN = 500;
 
+    @Value("${powerrag.guardrails.enabled:true}")
+    private boolean guardrailsEnabled;
+
     private final ChatClient              llamaGuardClient;
     private final GuardrailFlagRepository flagRepository;
 
@@ -52,7 +56,7 @@ public class GuardrailService {
      * Returns {@link GuardrailResult#safe()} on any error (fail-open).
      */
     public GuardrailResult checkInput(String text) {
-        if (text == null || text.isBlank()) return GuardrailResult.safe();
+        if (!guardrailsEnabled || text == null || text.isBlank()) return GuardrailResult.safe();
         try {
             String response = llamaGuardClient.prompt()
                     .user(buildGuardrailPrompt(text))
