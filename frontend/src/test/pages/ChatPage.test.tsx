@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import '../../i18n'
@@ -71,5 +71,21 @@ describe('ChatPage', () => {
   it('renders chat window', () => {
     renderChatPage()
     expect(screen.getByTestId('chat-window')).toBeInTheDocument()
+  })
+
+  it('toggles MCP tools list visibility', async () => {
+    renderChatPage()
+    await waitFor(() => {
+      expect(screen.getByTestId('mcp-tools-toggle')).toBeInTheDocument()
+    })
+    const toggle = screen.getByTestId('mcp-tools-toggle')
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText(/Fetches a URL/)).not.toBeInTheDocument()
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    await waitFor(() => expect(screen.getByText(/Fetches a URL/)).toBeInTheDocument())
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText(/Fetches a URL/)).not.toBeInTheDocument()
   })
 })

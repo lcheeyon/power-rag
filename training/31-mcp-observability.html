@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tool Observability &amp; Audit — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+  <div class="sidebar-module">Module 9 — Local AI Infrastructure</div>
+  <nav>
+    <a href="27-local-llm-models.html"><span class="topic-num">27</span> Local Open-Source LLMs</a>
+  </nav>
+  <div class="sidebar-module">Module 10 — Agentic RAG &amp; Live Data</div>
+  <nav>
+    <a href="28-model-context-protocol.html"><span class="topic-num">28</span> Model Context Protocol</a>
+    <a href="29-mcp-tool-server.html"><span class="topic-num">29</span> MCP Tool Servers</a>
+    <a href="30-intent-routing.html"><span class="topic-num">30</span> Intent Routing</a>
+    <a href="31-mcp-observability.html" class="active"><span class="topic-num">31</span> Tool Observability &amp; Audit</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 10 — Agentic RAG &amp; Live Data
+      <span>›</span> Tool Observability &amp; Audit
+    </div>
+
+    <h1>Tool Observability &amp; Audit</h1>
+    <div class="meta">Module 10 · ~18 min read</div>
+
+    <p>
+      When an LLM calls external tools during a conversation, you need to know exactly which tools fired,
+      how long each took, and whether they succeeded. Without this, a slow or failing tool call is an
+      invisible black box — you cannot tell from the final answer alone why a response took five seconds
+      or contained inaccurate information.
+    </p>
+    <p>
+      Power RAG instruments every MCP tool invocation transparently, without modifying the MCP servers
+      or the Spring AI tool pipeline. The data flows from the wrapper class through a thread-local buffer,
+      into the API response, and finally into the PostgreSQL audit log — giving you full traceability at
+      every layer.
+    </p>
+
+    <h2>The Data Model: McpToolInvocationSummary</h2>
+    <p>
+      One record is created per tool call, per chat turn:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        backend/src/main/java/com/powerrag/mcp/McpToolInvocationSummary.java
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/mcp/McpToolInvocationSummary.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>@JsonInclude(JsonInclude.Include.NON_NULL)
+public record McpToolInvocationSummary(
+        String serverId,       // inferred from tool name prefix, e.g. "powerrag-tools"
+        String toolName,       // exact tool name, e.g. "jira_search_issues"
+        boolean success,       // true if the call returned without exception
+        long durationMs,       // client-side wall clock time for the call
+        String errorMessage,   // null on success; truncated to 200 chars on failure
+        String argsSummary     // tool input summary, max 200 chars; null if blank
+) {}</code></pre>
+    </div>
+
+    <p>
+      <code>@JsonInclude(NON_NULL)</code> keeps the JSON compact — <code>errorMessage</code> and
+      <code>argsSummary</code> are omitted when null, which is the common case for successful calls with
+      simple inputs.
+    </p>
+
+    <h2>Layer 1 — ObservingToolCallback</h2>
+    <p>
+      This is the decorator that wraps every <code>ToolCallback</code> from the MCP provider. It
+      intercepts each call, times it, and posts a summary to the recorder. The model never knows it is
+      being observed.
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        backend/src/main/java/com/powerrag/mcp/ObservingToolCallback.java — invoke()
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/mcp/ObservingToolCallback.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>private String invoke(Supplier&lt;String&gt; supplier, String toolInput) {
+    String toolName = delegate.getToolDefinition().name();
+    String serverId = inferServerId(toolName);   // "powerrag-tools__jira_search" → "powerrag-tools"
+    long t0 = System.currentTimeMillis();
+    try {
+        String out = normalizeMcpToolOutput(supplier.get());
+        long ms = System.currentTimeMillis() - t0;
+        recorder.record(new McpToolInvocationSummary(
+                serverId, toolName, true, ms, null, summarizeArgs(toolInput)));
+        return out;
+    } catch (RuntimeException e) {
+        long ms = System.currentTimeMillis() - t0;
+        String msg = e.getMessage();
+        if (msg != null &amp;&amp; msg.length() &gt; 200) msg = msg.substring(0, 200) + "…";
+        recorder.record(new McpToolInvocationSummary(
+                serverId, toolName, false, ms, msg, summarizeArgs(toolInput)));
+        throw e;   // re-throw so Spring AI can handle tool failures
+    }
+}</code></pre>
+    </div>
+
+    <p>
+      Notice that the exception is <strong>re-thrown</strong> after recording. The observer records the
+      failure but does not swallow it — Spring AI still gets to decide whether to retry or surface the
+      error to the model.
+    </p>
+
+    <p>
+      Server ID is inferred from the tool name prefix, using a double-underscore separator that Spring AI
+      introduces when namespacing tools from multiple MCP servers:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">ObservingToolCallback.java — inferServerId()</div>
+      <pre><code>static String inferServerId(String toolName) {
+    if (toolName == null) return "mcp";
+    int sep = toolName.indexOf("__");
+    if (sep &gt; 0) return toolName.substring(0, sep);  // "powerrag-tools__fetch_url" → "powerrag-tools"
+    return "mcp";                                     // no namespace prefix: generic fallback
+}</code></pre>
+    </div>
+
+    <h2>Layer 2 — McpInvocationRecorder</h2>
+    <p>
+      The recorder collects invocations in a <code>ThreadLocal</code> list. Because Spring MVC handles
+      each HTTP request on a single thread, every tool call made during one chat turn naturally lands in
+      the same list, without any synchronisation required.
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        backend/src/main/java/com/powerrag/mcp/McpInvocationRecorder.java
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/mcp/McpInvocationRecorder.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>@Component
+public class McpInvocationRecorder {
+
+    private final ThreadLocal&lt;List&lt;McpToolInvocationSummary&gt;&gt; current =
+            ThreadLocal.withInitial(ArrayList::new);
+
+    public void clear() { current.get().clear(); }
+
+    public void record(McpToolInvocationSummary summary) { current.get().add(summary); }
+
+    /** Returns an immutable snapshot and clears the buffer for this thread. */
+    public List&lt;McpToolInvocationSummary&gt; snapshotAndClear() {
+        List&lt;McpToolInvocationSummary&gt; list = new ArrayList&lt;&gt;(current.get());
+        current.get().clear();
+        return list.isEmpty() ? List.of() : Collections.unmodifiableList(list);
+    }
+}</code></pre>
+    </div>
+
+    <div class="concept-box">
+      <strong>Key concept:</strong> <code>snapshotAndClear()</code> both returns the data and resets the
+      buffer in one atomic step. <code>RagService</code> always calls <code>clear()</code> before the LLM
+      call and <code>snapshotAndClear()</code> after, so there is no state leaking between requests even
+      in error paths — the recorder is always clean for the next request on the same thread.
+    </div>
+
+    <h2>Layer 3 — Database Audit Log</h2>
+    <p>
+      The Flyway V8 migration adds a nullable JSONB column to the <code>interactions</code> table:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        backend/src/main/resources/db/migration/V8__interaction_mcp_invocations.sql
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/resources/db/migration/V8__interaction_mcp_invocations.sql" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>-- MCP tool invocation summaries for a chat turn (nullable when no tools used)
+ALTER TABLE interactions ADD COLUMN mcp_invocations jsonb NULL;</code></pre>
+    </div>
+
+    <p>
+      The column is <code>NULL</code> for interactions where no tools fired, keeping the table compact
+      for the common case. The JPA entity maps the column using Hibernate's JSONB type:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        backend/src/main/java/com/powerrag/domain/Interaction.java — mcpInvocations field
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/domain/Interaction.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>@JdbcTypeCode(SqlTypes.JSON)
+@Column(columnDefinition = "jsonb")
+private List&lt;Map&lt;String, Object&gt;&gt; mcpInvocations;  // null when no tools were used</code></pre>
+    </div>
+
+    <p>Stored JSON for a two-tool call looks like this:</p>
+
+    <div class="code-block">
+      <div class="code-header">Example — interactions.mcp_invocations column value</div>
+      <pre><code>[
+  {
+    "serverId":   "powerrag-tools",
+    "toolName":   "jira_search_issues",
+    "success":    true,
+    "durationMs": 843,
+    "argsSummary": "{\"jql\": \"project = KAN ORDER BY created DESC\", \"max_results\": 5}"
+  },
+  {
+    "serverId":    "powerrag-tools",
+    "toolName":    "jira_get_issue",
+    "success":     true,
+    "durationMs":  312
+  }
+]</code></pre>
+    </div>
+
+    <h2>Layer 4 — API Response</h2>
+    <p>
+      <code>RagResponse</code> carries the invocation list alongside the answer and sources, so the
+      frontend can display tool activity without a separate API call:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        backend/src/main/java/com/powerrag/rag/model/RagResponse.java — mcpInvocations field
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/rag/model/RagResponse.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>public record RagResponse(
+        String answer,
+        double confidence,
+        List&lt;SourceRef&gt; sources,
+        String modelId,
+        long durationMs,
+        UUID interactionId,
+        boolean cacheHit,
+        String error,
+        String generatedImageBase64,
+        List&lt;McpToolInvocationSummary&gt; mcpInvocations  // empty list when no tools fired
+) {
+    public boolean mcpToolsUsed() {
+        return !mcpInvocations.isEmpty();
+    }
+}</code></pre>
+    </div>
+
+    <p>
+      The frontend TypeScript interface mirrors this:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        frontend/src/api/chatApi.ts — McpToolInvocationSummary type
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/frontend/src/api/chatApi.ts" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>export interface McpToolInvocationSummary {
+  serverId:      string
+  toolName:      string
+  success:       boolean
+  durationMs:    number
+  errorMessage?: string
+  argsSummary?:  string
+}
+
+export interface ChatQueryResponse {
+  answer:       string
+  confidence:   number
+  sources:      SourceRef[]
+  modelId:      string
+  durationMs:   number
+  interactionId: string
+  cacheHit:     boolean
+  error?:       string
+  generatedImageBase64?: string
+  mcpInvocations?: McpToolInvocationSummary[]  // undefined when not present in response
+}</code></pre>
+    </div>
+
+    <h2>Layer 5 — Frontend Display</h2>
+    <p>
+      The chat window renders an expandable badge for each message that used tools. The badge uses amber
+      styling to distinguish it from the cyan cache-hit chip and the green confidence indicator:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        frontend/src/components/ChatWindow.tsx — MCP badge (condensed)
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/frontend/src/components/ChatWindow.tsx" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>{(msg.response.mcpInvocations?.length ?? 0) &gt; 0 &amp;&amp; (
+  &lt;details data-testid="mcp-tools-badge"&gt;
+    &lt;summary className="text-xs text-amber-400 border border-amber-700/60 px-2 py-0.5 rounded-full"&gt;
+      MCP · {msg.response.mcpInvocations!.length} {plural}
+    &lt;/summary&gt;
+    &lt;ul className="mt-2 text-xs text-slate-500 space-y-1"&gt;
+      {msg.response.mcpInvocations!.map(inv =&gt; (
+        &lt;li key={inv.toolName}&gt;
+          &lt;span className="text-slate-400"&gt;{inv.toolName}&lt;/span&gt;
+          &lt;span className="text-slate-600"&gt; · {inv.durationMs}ms&lt;/span&gt;
+          {!inv.success &amp;&amp; inv.errorMessage &amp;&amp; (
+            &lt;span className="text-amber-600/90"&gt; — {inv.errorMessage}&lt;/span&gt;
+          )}
+        &lt;/li&gt;
+      ))}
+    &lt;/ul&gt;
+  &lt;/details&gt;
+)}</code></pre>
+    </div>
+
+    <p>
+      The HTML <code>&lt;details&gt;</code>/<code>&lt;summary&gt;</code> element provides the
+      expand/collapse behaviour with no JavaScript required — it is a native browser control.
+    </p>
+
+    <h2>The McpToolsPanel Sidebar</h2>
+    <p>
+      A separate panel component shows which tools are available in the current session. It calls
+      <code>GET /api/chat/mcp-tools</code> on load and displays the result:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        frontend/src/components/McpToolsPanel.tsx — capabilities panel
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/frontend/src/components/McpToolsPanel.tsx" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>// Shows status: "Not configured" / "Not attached" / list of tool names
+// Jira hint: renders a link to the Jira board if jira_* tools are present
+function McpToolsPanel({ data }: { data: McpToolsCapabilitiesResponse | undefined }) {
+  const hasJira = mcpHasJiraTools(data)
+  return (
+    &lt;div data-testid="mcp-tools-panel"
+         className="border border-amber-700/40 rounded bg-amber-950/20 p-3"&gt;
+      {/* Tool list or status message */}
+      {hasJira &amp;&amp; (
+        &lt;a href={JIRA_BOARD_URL} className="text-xs text-amber-500"&gt;
+          Open Jira board ↗
+        &lt;/a&gt;
+      )}
+    &lt;/div&gt;
+  )
+}</code></pre>
+    </div>
+
+    <h2>Confidence Score Adjustment</h2>
+    <p>
+      The confidence scorer takes MCP tool invocations into account. Successful tool calls provide live,
+      authoritative data that supplements or replaces KB retrieval — this can increase the model's
+      effective confidence. Failed tool calls (where the model had to answer without the data it requested)
+      can lower it:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        backend/src/main/java/com/powerrag/rag/scoring/ConfidenceScorer.java — MCP factor
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/rag/scoring/ConfidenceScorer.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>// In responseConfidence():
+double confidence = scorer.responseConfidence(
+        retrievalConfidence, hasRelevantDocs, mcpInvocations);
+
+// mcpInvocations is passed in from the recorded invocation list.
+// If tools ran and succeeded, the base confidence is boosted.
+// If tools ran but all failed, the confidence is reduced.</code></pre>
+    </div>
+
+    <h2>Test Coverage</h2>
+    <p>
+      The observability layer has dedicated unit tests that verify output normalisation, argument
+      summarisation, and failure recording without needing a live MCP server:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        backend/src/test/java/com/powerrag/mcp/ObservingToolCallbackTest.java
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/test/java/com/powerrag/mcp/ObservingToolCallbackTest.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>@Test
+void normalizesTextContentWrapper() {
+    String wrapped = "TextContent[annotations=null, text={\"key\":\"value\"}, meta=null]";
+    String result = ObservingToolCallback.normalizeMcpToolOutput(wrapped);
+    assertEquals("{\"key\":\"value\"}", result);
+}
+
+@Test
+void passesPlainJsonThrough() {
+    String json = "{\"ok\":true,\"text\":\"hello\"}";
+    assertEquals(json, ObservingToolCallback.normalizeMcpToolOutput(json));
+}
+
+@Test
+void recordsFailureAndRethrows() {
+    ToolCallback failing = mock(ToolCallback.class);
+    when(failing.call(any())).thenThrow(new RuntimeException("timeout"));
+    ObservingToolCallback obs = new ObservingToolCallback(failing, recorder);
+
+    assertThrows(RuntimeException.class, () -&gt; obs.call("{}"));
+
+    List&lt;McpToolInvocationSummary&gt; recorded = recorder.snapshotAndClear();
+    assertEquals(1, recorded.size());
+    assertFalse(recorded.get(0).success());
+    assertEquals("timeout", recorded.get(0).errorMessage());
+}</code></pre>
+    </div>
+
+    <p>
+      Frontend test IDs provide stable anchors for E2E assertions:
+    </p>
+
+    <table>
+      <thead>
+        <tr><th>Test ID</th><th>Component</th><th>What it selects</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>mcp-tools-badge</code></td>
+          <td><code>ChatWindow</code></td>
+          <td>The expandable MCP invocation summary on each message</td>
+        </tr>
+        <tr>
+          <td><code>mcp-tools-panel</code></td>
+          <td><code>McpToolsPanel</code></td>
+          <td>The sidebar panel listing available tools</td>
+        </tr>
+        <tr>
+          <td><code>mcp-tools-toggle</code></td>
+          <td><code>McpToolsPanel</code></td>
+          <td>The show/hide toggle button inside the panel</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="tip">
+      <strong>Tip:</strong> Query the audit log with PostgreSQL's JSONB operators to analyse tool usage
+      patterns across interactions:
+      <code>SELECT mcp_invocations FROM interactions WHERE mcp_invocations IS NOT NULL AND mcp_invocations @&gt; '[{"success":false}]';</code>
+      This finds all interactions where at least one tool call failed.
+    </div>
+
+    <div class="page-nav">
+      <a href="30-intent-routing.html" class="btn-nav">← Previous</a>
+    </div>
+
+  </div>
+</main>
+
+</body>
+</html>

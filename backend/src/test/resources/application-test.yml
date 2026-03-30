@@ -20,7 +20,7 @@ spring:
           text:
             options:
               model: gemini-embedding-001
-              dimensions: 768
+              dimensions: ${powerrag.embedding.dimensions:768}
     anthropic:
       api-key: test-key-not-real
       chat:
@@ -38,9 +38,15 @@ spring:
       chat:
         options:
           model: qwen2.5-coder:7b
+    mcp:
+      client:
+        enabled: false
+        toolcallback:
+          enabled: false
     vectorstore:
       qdrant:
         initialize-schema: true
+        dimensions: ${powerrag.embedding.dimensions:768}
 
   flyway:
     enabled: true
@@ -50,6 +56,12 @@ spring:
     show-sql: true
 
 powerrag:
+  embedding:
+    dimensions: 768
+  rag:
+    intent-routing-enabled: false
+  mcp:
+    rag-enabled: false
   semantic-cache:
     enabled: false   # Redis Stack not available in test containers (plain Redis used)
   jwt:

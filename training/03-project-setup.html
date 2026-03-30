@@ -66,6 +66,13 @@
   <nav>
     <a href="27-local-llm-models.html"><span class="topic-num">27</span> Local Open-Source LLMs</a>
   </nav>
+  <div class="sidebar-module">Module 10 — Agentic RAG &amp; Live Data</div>
+  <nav>
+    <a href="28-model-context-protocol.html"><span class="topic-num">28</span> Model Context Protocol</a>
+    <a href="29-mcp-tool-server.html"><span class="topic-num">29</span> MCP Tool Servers</a>
+    <a href="30-intent-routing.html"><span class="topic-num">30</span> Intent Routing</a>
+    <a href="31-mcp-observability.html"><span class="topic-num">31</span> Tool Observability &amp; Audit</a>
+  </nav>
 </nav>
 
 <main class="content">
@@ -161,7 +168,7 @@
           text:
             options:
               model: gemini-embedding-001
-              dimensions: 768
+              dimensions: ${powerrag.embedding.dimensions:768}
     ollama:
       base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
       chat:
@@ -172,9 +179,11 @@
         host: ${QDRANT_HOST:localhost}
         port: ${QDRANT_PORT:6334}
         collection-name: power_rag_docs
-        dimensions: 768
+        dimensions: ${powerrag.embedding.dimensions:768}
 
 powerrag:
+  embedding:
+    dimensions: ${POWERRAG_EMBEDDING_DIMENSIONS:768}
   guardrails:
     input-model-id: ${POWERRAG_GUARDRAIL_MODEL:gemini-2.5-flash}</code></pre>
     </div>
@@ -206,7 +215,7 @@ powerrag:
     <h3>Qdrant Vector Store</h3>
     <ul>
       <li>Port <code>6334</code> is the gRPC port used by Spring AI (not the REST port 6333)</li>
-      <li><code>dimensions: 768</code> must match the configured Google embedding output</li>
+      <li><code>powerrag.embedding.dimensions</code> (default 768, env <code>POWERRAG_EMBEDDING_DIMENSIONS</code>) must match Gemini embedding output and Qdrant</li>
       <li><code>collection-name: power_rag_docs</code> — this collection is auto-created by Spring AI on startup</li>
     </ul>
 

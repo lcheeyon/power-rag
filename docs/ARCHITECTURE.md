@@ -19,7 +19,7 @@ User Query
     │
     ▼  Stage 1 ─────────────────────────────────────────────────
     │  Semantic Cache Lookup (SemanticCache → Redis)
-    │  • Embeds query with gemini-embedding-001 (768-dim)
+    │  • Embeds query with gemini-embedding-001 (768-dim via powerrag.embedding.dimensions)
     │  • Performs Redis vector search (cosine similarity ≥ 0.92)
     │  • HIT  → returns cached answer immediately (saves ~2–10 s LLM call)
     │  • MISS → continues
@@ -84,7 +84,7 @@ The `HybridRetriever` combines two independent search paths and merges them with
 ```
 Query
   ├─► Dense Search (Qdrant)
-  │     gemini-embedding-001 embeds query (768-dim)
+  │     gemini-embedding-001 embeds query (768-dim, powerrag.embedding.dimensions)
   │     Qdrant cosine similarity search → top-2K results
   │     Each result ranked by position: score += 1 / (rank + 1 + 60)
   │
@@ -124,7 +124,7 @@ DocumentIngestionService.ingest()
     │     Preserves all section metadata on each chunk
     │
     ├─► VectorStore.add() (Qdrant via Spring AI)
-    │     Embeds chunk text with gemini-embedding-001 (768-dim)
+    │     Embeds chunk text with gemini-embedding-001 (768-dim, powerrag.embedding.dimensions)
     │     Stores vector + metadata payload in Qdrant
     │
     └─► DocumentChunkRepository.saveAll() (PostgreSQL)
@@ -140,7 +140,7 @@ The semantic cache avoids duplicate LLM calls for semantically equivalent querie
 
 ```
 lookup(question, lang):
-    1. Embed question with gemini-embedding-001 (768-dim)
+    1. Embed question with gemini-embedding-001 (768-dim, powerrag.embedding.dimensions)
     2. Redis VSEARCH on "powerrag:cache:{lang}" index
     3. Find nearest neighbour with cosine score ≥ 0.92
     4. HIT: deserialise CacheHit (answer, confidence, sources, modelId)

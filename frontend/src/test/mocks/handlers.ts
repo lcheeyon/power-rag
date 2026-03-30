@@ -26,15 +26,54 @@ export const handlers = [
   // Actuator health
   http.get('/actuator/health', () => HttpResponse.json({ status: 'UP' })),
 
+  // MCP tools catalog (chat page panel)
+  http.get('/api/chat/mcp-tools', () =>
+    HttpResponse.json({
+      ragMcpEnabled:       true,
+      mcpClientAvailable: true,
+      tools:               [
+        {
+          name:        'powerrag-tools__fetch_url',
+          description: 'Fetches a URL; returns JSON with ok, status_code, text or error.',
+        },
+        {
+          name:        'powerrag-tools__jira_search_issues',
+          description: 'Search Jira Cloud issues with JQL.',
+        },
+        {
+          name:        'powerrag-tools__jira_get_issue',
+          description: 'Fetch a single Jira issue by key.',
+        },
+        {
+          name:        'powerrag-tools__github_search_code',
+          description: 'Search code on GitHub (code search syntax).',
+        },
+        {
+          name:        'powerrag-tools__github_get_repository_content',
+          description: 'Read a file or list a directory in a GitHub repo.',
+        },
+        {
+          name:        'powerrag-tools__gcp_logging_query',
+          description: 'Query Google Cloud Logging with a Logs Explorer filter.',
+        },
+      ],
+    }),
+  ),
+
   // Chat query
   http.post('/api/chat/query', async ({ request }) => {
-    const body = await request.json() as { query: string }
+    const body = await request.json() as { question?: string }
     return HttpResponse.json({
-      answer:      `Mock answer for: ${body.query}`,
+      answer:      `Mock answer for: ${body.question ?? ''}`,
       confidence:  0.87,
       cacheHit:    false,
       sources:     [
-        { fileName: 'doc.pdf', pageNumber: 1, snippet: 'Relevant excerpt from document.' },
+        {
+          fileName:   'doc.pdf',
+          pageNumber: 1,
+          snippet:    'Relevant excerpt from document.',
+          documentId: 'doc-1',
+        },
       ],
       modelProvider: 'ANTHROPIC',
       modelId:       'claude-sonnet-4-6',
@@ -79,6 +118,16 @@ export const handlers = [
 
   // Document list
   http.get('/api/documents', () => HttpResponse.json([])),
+
+  http.get('/api/documents/:id/file', () =>
+    HttpResponse.arrayBuffer(new Uint8Array([37, 80, 68, 70]).buffer, {
+      headers: { 'Content-Type': 'application/pdf' },
+    }),
+  ),
+
+  // Model catalogs (chat model picker)
+  http.get('/api/models/ollama', () => HttpResponse.json([])),
+  http.get('/api/models/gemini', () => HttpResponse.json([])),
 
   // Interaction feedback
   http.get('/api/admin/interactions/:id/feedback', () => HttpResponse.json([])),

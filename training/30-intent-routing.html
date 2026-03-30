@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intent Routing — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+  <div class="sidebar-module">Module 9 — Local AI Infrastructure</div>
+  <nav>
+    <a href="27-local-llm-models.html"><span class="topic-num">27</span> Local Open-Source LLMs</a>
+  </nav>
+  <div class="sidebar-module">Module 10 — Agentic RAG &amp; Live Data</div>
+  <nav>
+    <a href="28-model-context-protocol.html"><span class="topic-num">28</span> Model Context Protocol</a>
+    <a href="29-mcp-tool-server.html"><span class="topic-num">29</span> MCP Tool Servers</a>
+    <a href="30-intent-routing.html" class="active"><span class="topic-num">30</span> Intent Routing</a>
+    <a href="31-mcp-observability.html"><span class="topic-num">31</span> Tool Observability &amp; Audit</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 10 — Agentic RAG &amp; Live Data
+      <span>›</span> Intent Routing
+    </div>
+
+    <h1>Intent Routing</h1>
+    <div class="meta">Module 10 · ~20 min read</div>
+
+    <p>
+      Without intent routing, every chat message triggers a full knowledge-base retrieval, whether or not
+      the user is asking about their uploaded documents. A user asking "What time is it in Tokyo?" does
+      not need Qdrant results — it needs a time-zone lookup. Retrieving irrelevant chunks wastes latency
+      and can pollute the context window with noise that confuses the model.
+    </p>
+    <p>
+      Intent routing adds a fast decision step before retrieval: a small LLM call (or a pattern-matching
+      fallback) classifies each question into a <code>QueryIntent</code> that tells the pipeline exactly
+      what resources to activate.
+    </p>
+
+    <h2>The QueryIntent Record</h2>
+    <p>
+      The outcome of classification is a simple Java record with two boolean fields:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        backend/src/main/java/com/powerrag/rag/intent/QueryIntent.java
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/rag/intent/QueryIntent.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>public record QueryIntent(boolean retrieveDocuments, boolean allowMcpTools) {
+
+    /** When intent routing is disabled: always retrieve;
+        MCP follows global powerrag.mcp.rag-enabled flag. */
+    public static QueryIntent legacy(boolean mcpRagEnabled) {
+        return new QueryIntent(true, mcpRagEnabled);
+    }
+}</code></pre>
+    </div>
+
+    <table>
+      <thead>
+        <tr><th>Field</th><th>When true</th><th>When false</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>retrieveDocuments</code></td>
+          <td>Run Qdrant + PostgreSQL FTS hybrid retrieval</td>
+          <td>Skip retrieval entirely; use only LLM general knowledge (or MCP tools)</td>
+        </tr>
+        <tr>
+          <td><code>allowMcpTools</code></td>
+          <td>Attach MCP tool callbacks to this ChatClient call</td>
+          <td>No tools attached; model answers from context or KB only</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="concept-box">
+      <strong>Key concept:</strong> <code>allowMcpTools</code> in the intent is an additional gate on top
+      of the global <code>powerrag.mcp.rag-enabled</code> flag. Tools are only attached when <em>both</em>
+      the global flag is <code>true</code> AND the per-query intent allows them. This lets you enable MCP
+      globally but have the router selectively disable tools for simple KB-only queries.
+    </div>
+
+    <h2>The Two Classification Paths</h2>
+
+    <p>
+      <code>QueryIntentClassifier</code> tries the LLM-based router first. If it fails (timeout, parse
+      error, API error), it falls back to pattern-matching heuristics. The fallback is deliberately
+      conservative: when in doubt, it retrieves documents and enables MCP tools.
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        backend/src/main/java/com/powerrag/rag/intent/QueryIntentClassifier.java — classify()
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/rag/intent/QueryIntentClassifier.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>public QueryIntent classify(String question, String language,
+                            ChatClient client, String modelProvider, String modelId) {
+    if (question == null || question.isBlank()) {
+        return fallback(question);
+    }
+    try {
+        ChatClient.ChatClientRequestSpec spec = client.prompt()
+                .system(ROUTER_SYSTEM)
+                .user("language=" + (language != null ? language : "en") + "\n\n" + question);
+        spec = applyRouterOptions(spec, modelProvider, modelId);  // temp=0.0, max_tokens=350
+        String raw = spec.call().content();
+        return parseModelJson(raw, question);
+    } catch (Exception e) {
+        log.warn("Intent classification failed, using heuristic fallback: {}", e.getMessage());
+        return fallback(question);
+    }
+}</code></pre>
+    </div>
+
+    <h2>The Router System Prompt</h2>
+    <p>
+      The classifier uses the <em>same</em> <code>ChatClient</code> as the main answer call, but overrides
+      temperature to 0.0 and caps output at 350 tokens. The model is only allowed to return a JSON object
+      — no markdown fences, no prose. This makes the response fast (&lt;300 ms typically) and easy to parse.
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        QueryIntentClassifier.java — router system prompt (ROUTER_SYSTEM constant)
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/rag/intent/QueryIntentClassifier.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>You route questions for a RAG assistant with optional MCP tools (web fetch, time, weather,
+Jira, GitHub code/repo, GCP Cloud Logging, mailbox IMAP/SMTP).
+Reply with ONLY one JSON object (no markdown fences, no prose):
+{"retrieveDocuments":true|false,"allowMcpTools":true|false}
+
+retrieveDocuments — true if the user likely needs their uploaded knowledge base (policies,
+internal docs, PDFs they ingested, "my documents", company-specific material).
+false for pure general knowledge, small talk, standalone math/logic,
+generic coding help with no doc context, or questions that clearly do not depend on private uploads.
+
+allowMcpTools — true if any live tool may help: URL or fetch/read a webpage; current time or
+timezone; weather or forecast; Jira/support tickets; GitHub (search code, read files in a repo);
+Google Cloud Logging / Stackdriver; email/mailbox.
+false when a static KB or general knowledge answer suffices.
+Default false; do not enable for purely hypothetical or historical trivia with no live data need.
+
+If unsure about retrieveDocuments, prefer true.</code></pre>
+    </div>
+
+    <p>
+      The final instruction — "if unsure about retrieveDocuments, prefer true" — is intentional. A false
+      negative on retrieval (skipping the KB when it was needed) produces a worse answer than a false
+      positive (retrieving when it wasn't needed). The cost of an unnecessary retrieval is a few
+      milliseconds; the cost of missing KB context is a hallucinated answer.
+    </p>
+
+    <h2>Heuristic Fallback Patterns</h2>
+    <p>
+      When the LLM router fails or is disabled, a set of compiled regular expressions provide a fast
+      fallback. These cover the most common signals that live data is needed:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        QueryIntentClassifier.java — regex patterns for MCP signal detection
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/rag/intent/QueryIntentClassifier.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>// Any http/https URL in the question
+private static final Pattern URL_PATTERN = Pattern.compile(
+    "https?://[^\\s&lt;&gt;\"{}|\\\\^`\\[\\]]+", Pattern.CASE_INSENSITIVE);
+
+// Jira issue keys (e.g. KAN-5), "jira", "atlassian", "support ticket"
+private static final Pattern JIRA_LIVE_PATTERN = Pattern.compile(
+    "(?i)\\b([a-z][a-z0-9]+-\\d+|\\bjira\\b|\\batlassian\\b|\\bsupport ticket\\b|\\bkan-\\d+)");
+
+// Weather terms
+private static final Pattern WEATHER_LIVE_PATTERN = Pattern.compile(
+    "(?i)\\b(weather|forecast|temperature|rain|humidity|wind chill|feels like)\\b");
+
+// Time and timezone queries
+private static final Pattern TIME_LIVE_PATTERN = Pattern.compile(
+    "(?i)\\b(what time|current time|time now|timezone|time in |utc\\b|gmt\\b|zulu time)\\b");
+
+// GitHub: repo search, code search, PR/commit queries
+private static final Pattern GITHUB_MCP_PATTERN = Pattern.compile(
+    "(?i)\\b(github\\b|repo:\\s*\\S+/\\S+|code\\s+search|pull\\s+request|\\bcommit(s)?\\b)\\b");
+
+// GCP / Stackdriver / Cloud Logging
+private static final Pattern GCP_LOGGING_MCP_PATTERN = Pattern.compile(
+    "(?i)\\b(gcp\\s+logs?|google\\s+cloud\\s+logging|stackdriver|gke\\s+logs)\\b");
+
+// Email / inbox / mailbox
+private static final Pattern EMAIL_MCP_PATTERN = Pattern.compile(
+    "(?i)\\b(email|inbox|unread\\s+mail|mailbox|imap|gmail|summarize.*email|draft.*reply)\\b");</code></pre>
+    </div>
+
+    <p>
+      The fallback returns <code>retrieveDocuments=true</code> in all cases (safe default), and
+      <code>allowMcpTools=true</code> only when one of the patterns matches.
+    </p>
+
+    <h2>Integration in RagService</h2>
+    <p>
+      Intent routing runs immediately after the semantic cache check (to avoid unnecessary classification
+      for cached responses) and before hybrid retrieval. Images in the request bypass routing since the
+      main LLM must handle vision — tools would be a distraction.
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        backend/src/main/java/com/powerrag/rag/service/RagService.java — intent routing step
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/rag/service/RagService.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>// ── 2. Intent routing (before retrieval &amp; main LLM) ─────────────────
+boolean imagePresent = imageBase64 != null &amp;&amp; !imageBase64.isBlank();
+QueryIntent intent;
+if (!intentRoutingEnabled || imagePresent) {
+    // Legacy mode: always retrieve; MCP follows global flag
+    intent = QueryIntent.legacy(mcpRagEnabled);
+} else {
+    intent = intentClassifier.classify(question, lang, client, modelProvider, reqModelId);
+}
+boolean attachMcpTools = mcpRagEnabled &amp;&amp; intent.allowMcpTools();
+
+log.info("Query intent: retrieveDocuments={} attachMcpTools={} (routingActive={})",
+        intent.retrieveDocuments(), attachMcpTools, intentRoutingEnabled &amp;&amp; !imagePresent);
+
+// ── 3. Retrieval (optional) ─────────────────────────────────────────
+List&lt;RetrievedChunk&gt; chunks;
+if (!intent.retrieveDocuments()) {
+    chunks = List.of();
+    log.info("Skipping knowledge-base retrieval (intent.retrieveDocuments=false)");
+} else {
+    chunks = retriever.retrieve(question);
+}</code></pre>
+    </div>
+
+    <h2>Configuration</h2>
+
+    <div class="code-block">
+      <div class="code-header">application.yml — intent routing config</div>
+      <pre><code>powerrag:
+  rag:
+    # One small LLM call to decide KB retrieval vs general knowledge,
+    # and whether MCP tools (e.g. fetch) are needed.
+    intent-routing-enabled: true
+
+  mcp:
+    # Attach MCP tools to the main RAG ChatClient when
+    # spring.ai.mcp.client.enabled=true (see application-dev.yml).
+    rag-enabled: false</code></pre>
+    </div>
+
+    <p>
+      Set <code>intent-routing-enabled: false</code> to fall back to the pre-MCP behaviour: always
+      retrieve from the knowledge base. This is useful when you want to disable the extra LLM call for
+      cost reasons, or when debugging retrieval quality without the routing layer in the way.
+    </p>
+
+    <h2>Example Routing Decisions</h2>
+
+    <table>
+      <thead>
+        <tr><th>User question</th><th>retrieveDocuments</th><th>allowMcpTools</th><th>Reasoning</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>"Summarise the EU AI Act risk categories"</td>
+          <td>true</td>
+          <td>false</td>
+          <td>Clearly refers to an uploaded document</td>
+        </tr>
+        <tr>
+          <td>"What time is it in Singapore?"</td>
+          <td>false</td>
+          <td>true</td>
+          <td>Live data needed; no document relevance</td>
+        </tr>
+        <tr>
+          <td>"Fetch https://example.com/data.json and summarise it"</td>
+          <td>false</td>
+          <td>true</td>
+          <td>URL detected — fetch_url tool required</td>
+        </tr>
+        <tr>
+          <td>"What are the open KAN tickets?"</td>
+          <td>false</td>
+          <td>true</td>
+          <td>Jira issue key pattern detected</td>
+        </tr>
+        <tr>
+          <td>"Write a Python function to sort a list"</td>
+          <td>false</td>
+          <td>false</td>
+          <td>General coding help; no docs or live data needed</td>
+        </tr>
+        <tr>
+          <td>"According to my documents, what is our GDPR policy on retention?"</td>
+          <td>true</td>
+          <td>false</td>
+          <td>"my documents" phrase triggers KB retrieval</td>
+        </tr>
+        <tr>
+          <td>"Search the repo for the RagService class"</td>
+          <td>false</td>
+          <td>true</td>
+          <td>GitHub code search pattern detected</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Provider-Aware Router Options</h2>
+    <p>
+      The classifier uses the same provider/model as the main chat request, but forces deterministic
+      output by setting temperature to 0.0. Provider-specific option builders are used to avoid the
+      options from one provider being applied to another:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">QueryIntentClassifier.java — applyRouterOptions()</div>
+      <pre><code>private ChatClient.ChatClientRequestSpec applyRouterOptions(
+        ChatClient.ChatClientRequestSpec spec, String provider, String modelId) {
+    String p = provider != null ? provider : "ANTHROPIC";
+    if ("OLLAMA".equalsIgnoreCase(p) &amp;&amp; modelId != null) {
+        return spec.options(OllamaChatOptions.builder()
+                .model(modelId).temperature(0.0).build());
+    }
+    if ("GEMINI".equalsIgnoreCase(p) &amp;&amp; modelId != null) {
+        return spec.options(GoogleGenAiChatOptions.builder()
+                .model(modelId).temperature(0.0).build());
+    }
+    // Default: Anthropic
+    AnthropicChatOptions.Builder b = AnthropicChatOptions.builder()
+            .temperature(0.0).maxTokens(350);
+    if (modelId != null) b.model(modelId);
+    return spec.options(b.build());
+}</code></pre>
+    </div>
+
+    <div class="tip">
+      <strong>Tip:</strong> The router uses <code>maxTokens=350</code> for Anthropic, which is enough for
+      a short JSON object. This keeps the router call fast and cheap. If the LLM returns more tokens
+      (e.g. wrapped in markdown), <code>extractJsonObject()</code> strips the surrounding text using
+      brace-matching before JSON parsing.
+    </div>
+
+    <div class="warning">
+      <strong>Warning:</strong> With <code>intentRoutingEnabled=true</code>, every non-cached chat request
+      makes <em>two</em> LLM calls: one for routing (~100–300 ms) and one for the answer. This is usually
+      worth the cost because it avoids unnecessary Qdrant scans, but monitor your API usage if you have
+      many concurrent users on a paid tier with expensive models.
+    </div>
+
+    <div class="page-nav">
+      <a href="29-mcp-tool-server.html" class="btn-nav">← Previous</a>
+      <a href="31-mcp-observability.html" class="btn-nav">Next →</a>
+    </div>
+
+  </div>
+</main>
+
+</body>
+</html>

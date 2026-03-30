@@ -22,6 +22,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.tool.ToolCallback;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.powerrag.mcp.McpInvocationRecorder;
+import com.powerrag.rag.intent.QueryIntentClassifier;
 
 import java.util.List;
 import java.util.Map;
@@ -30,7 +35,9 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -55,16 +62,26 @@ class RagServiceTest {
     @Mock ChatClient.ChatClientRequestSpec requestSpec;
     @Mock ChatClient.CallResponseSpec      callSpec;
 
-    RagService service;
+    RagService           service;
+    private final ConfidenceScorer confidenceScorer = new ConfidenceScorer();
 
     @BeforeEach
     void setUp() {
+        lenient().when(scorer.score(anyList())).thenAnswer(inv -> confidenceScorer.score(inv.getArgument(0)));
+        lenient().when(scorer.responseConfidence(anyDouble(), anyBoolean(), anyList()))
+                .thenAnswer(inv -> confidenceScorer.responseConfidence(
+                        inv.getArgument(0), inv.getArgument(1), inv.getArgument(2)));
+
         service = new RagService(retriever, scorer, assembler,
                 chatClient, chatClient2, chatClient3, chatClient4, chatClient5, chatClient6,
                 interactionRepository, semanticCache, new MultilingualPromptBuilder(),
-                guardrailService, imageGenerationService);
+                guardrailService, imageGenerationService,
+                Optional.empty(), new McpInvocationRecorder(), new QueryIntentClassifier(new ObjectMapper()),
+                false, false);
         // Image generation returns no result by default (not a generation request)
         lenient().when(imageGenerationService.isImageGenerationRequest(anyString())).thenReturn(false);
+        lenient().when(imageGenerationService.generateImage(anyString(), nullable(String.class))).thenReturn(null);
+        lenient().when(imageGenerationService.fallbackToLlmOnFailure()).thenReturn(false);
 
         // Guardrail: allow all input/output by default (lenient — not all test paths use both)
         lenient().when(guardrailService.checkInput(anyString())).thenReturn(GuardrailResult.safe());
@@ -76,7 +93,9 @@ class RagServiceTest {
         // Wire the ChatClient fluent chain: prompt() → user() → call() → content()
         // All lenient: cache-hit tests skip the LLM path entirely
         lenient().when(chatClient.prompt()).thenReturn(requestSpec);
+        lenient().when(requestSpec.system(anyString())).thenReturn(requestSpec);
         lenient().when(requestSpec.user(anyString())).thenReturn(requestSpec);
+        lenient().when(requestSpec.toolCallbacks(any(ToolCallback[].class))).thenReturn(requestSpec);
         lenient().when(requestSpec.call()).thenReturn(callSpec);
         lenient().when(callSpec.content()).thenReturn("LLM answer about the query.");  // unused when call() throws
 
@@ -97,7 +116,6 @@ class RagServiceTest {
     @DisplayName("Happy path: returns answer, sources, confidence and interactionId")
     void happyPath_returnsFullResponse() {
         when(retriever.retrieve(anyString())).thenReturn(List.of(chunk("c1"), chunk("c2")));
-        when(scorer.score(anyList())).thenReturn(0.85);
         when(assembler.assemble(anyList())).thenReturn("Context text");
         when(assembler.extractSources(anyList())).thenReturn(
                 List.of(new SourceRef("doc.pdf", "page-1", "Some text…", 1, null, null)));
@@ -105,7 +123,8 @@ class RagServiceTest {
         RagResponse response = service.query("What is Power RAG?", UUID.randomUUID(), null, "en", "ANTHROPIC", "claude-sonnet-4-6");
 
         assertThat(response.answer()).isEqualTo("LLM answer about the query.");
-        assertThat(response.confidence()).isEqualTo(0.85);
+        // RRF-normalised top chunk (~0.61) → calibrated KB confidence (~0.70)
+        assertThat(response.confidence()).isBetween(0.68, 0.72);
         assertThat(response.sources()).hasSize(1);
         assertThat(response.interactionId()).isNotNull();
         assertThat(response.durationMs()).isGreaterThanOrEqualTo(0);

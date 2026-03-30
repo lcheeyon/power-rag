@@ -2,12 +2,15 @@
 
 ## Embeddings, semantic cache, and input guardrails
 
-The default configuration uses **Google GenAI** for:
+The **local stack standardizes on 768-dimensional** vectors for `gemini-embedding-001`.
 
-- **Embeddings** — `gemini-embedding-001` at **768** dimensions (`spring.ai.google.genai.embedding.*` and matching `spring.ai.vectorstore.qdrant.dimensions`).
+- **Canonical setting** — `powerrag.embedding.dimensions` (default **768**, override with env **`POWERRAG_EMBEDDING_DIMENSIONS`**). This value is wired into both `spring.ai.google.genai.embedding.text.options.dimensions` and `spring.ai.vectorstore.qdrant.dimensions`, so Qdrant, ingestion, and query embeddings stay aligned.
+- **Semantic cache (Redis Stack)** — uses the same `EmbeddingModel` bean, so its index width matches **768** automatically.
 - **Input guardrails** — **Gemini 2.5 Flash** (`gemini-2.5-flash`) via `powerrag.guardrails.input-model-id` (env: `POWERRAG_GUARDRAIL_MODEL`).
 
-`OllamaEmbeddingAutoConfiguration` is **excluded** in `application.yml` so the knowledge base and Redis cache always share the same cloud `EmbeddingModel`. Ollama remains available for **local chat** only. Changing embedding provider or dimensions requires dropping and recreating the Qdrant collection and re-ingesting documents.
+`OllamaEmbeddingAutoConfiguration` is **excluded** in `application.yml` so the knowledge base and Redis cache always share the same cloud `EmbeddingModel`. Ollama remains available for **local chat** only.
+
+If Qdrant was ever created with another size (e.g. Gemini’s API default **3072**), dense search will fail until you **delete** the collection and let the app recreate it at **768**, then **re-ingest** documents. Docker Compose sets `POWERRAG_EMBEDDING_DIMENSIONS=768` on the backend for clarity.
 
 ## Adding a New LLM Provider
 
@@ -119,6 +122,21 @@ cd frontend && npm test
 
 ---
 
+## MCP on the laptop (dev profile only)
+
+MCP is **off** in the default `application.yml` so CI and default JAR runs do not need extra stdio binaries. For local chat with tools, the **powerrag-tools** Python server provides **`fetch_url`** (always JSON, avoids Gemini tool JSON parse issues on HTTP errors), time, weather, Jira, GitHub, and GCP Logging.
+
+- **Docker Compose**: backend image runs `pip3 install -r mcp/requirements.txt`; stack uses `SPRING_PROFILES_ACTIVE=dev` with `application-dev.yml` (MCP `request-timeout` 120s).
+- **Host**: run with the **dev** profile after `pip3 install -r backend/mcp/requirements.txt`:
+
+```bash
+cd backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+`application-dev.yml` sets `powerrag.mcp.rag-enabled: true` and registers the **powerrag-tools** Python MCP server via stdio. Successful tool calls appear in the chat UI under an **MCP** badge (`data-testid="mcp-tools-badge"`). Production / GCP configs are unchanged and keep MCP disabled.
+
+---
+
 ## Code Coverage
 
 JaCoCo enforces thresholds on `mvn verify`:
@@ -158,9 +176,9 @@ For debugging security, set `org.springframework.security: DEBUG`.
 # Restart backend (kills port 8080 and relaunches)
 lsof -ti:8080 | xargs kill -9 2>/dev/null; cd backend && export $(grep -v "^#" ../.env | xargs) && ./mvnw spring-boot:run
 
-# Wipe and recreate Qdrant collection (if embeddings are corrupt)
-curl -X DELETE http://localhost:6333/collections/power_rag_docs
-# Restart backend — it will recreate the collection on startup
+# Wipe Qdrant KB collection (wrong dimension, corrupt index, or after changing POWERRAG_EMBEDDING_DIMENSIONS)
+chmod +x scripts/reset-qdrant-collection.sh && ./scripts/reset-qdrant-collection.sh
+# Restart backend — it recreates power_rag_docs at 768; re-upload documents
 
 # Manually register a Flyway migration checksum (if you applied SQL directly)
 python3 -c "

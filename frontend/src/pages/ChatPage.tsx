@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, NavLink } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -7,6 +7,7 @@ import ModelSelector, { DEFAULT_MODEL, type ModelOption } from '../components/Mo
 import LanguageToggle from '../components/LanguageToggle'
 import UploadZone from '../components/UploadZone'
 import ChatWindow from '../components/ChatWindow'
+import McpToolsPanel from '../components/McpToolsPanel'
 import type { SourceRef } from '../api/chatApi'
 import { listDocuments, deleteDocument, fetchDocumentFile } from '../api/documentApi'
 
@@ -19,6 +20,17 @@ export default function ChatPage() {
   const [model, setModel]         = useState<ModelOption>(DEFAULT_MODEL)
   const [sources, setSources]     = useState<SourceRef[]>([])
   const [openingDocId, setOpeningDocId] = useState<string | null>(null)
+  const sourcesSidebarRef         = useRef<HTMLElement>(null)
+
+  const focusSourcesPanel = useCallback(() => {
+    const el = sourcesSidebarRef.current
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' })
+    el.classList.add('ring-2', 'ring-indigo-500/50', 'ring-offset-2', 'ring-offset-[#0A0A0F]')
+    window.setTimeout(() => {
+      el.classList.remove('ring-2', 'ring-indigo-500/50', 'ring-offset-2', 'ring-offset-[#0A0A0F]')
+    }, 2200)
+  }, [])
 
   const openSourceDocument = async (documentId: string, fileName: string) => {
     setOpeningDocId(documentId)
@@ -140,19 +152,26 @@ export default function ChatPage() {
             </button>
           </div>
         </header>
-        <div className="flex-1 overflow-hidden">
-          <ChatWindow
-            model={model}
-            language={i18n.language}
-            onSourcesChange={setSources}
-          />
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          <McpToolsPanel />
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <ChatWindow
+              model={model}
+              language={i18n.language}
+              onSourcesChange={setSources}
+              onOpenKbDocument={openSourceDocument}
+              onFocusSourcesPanel={focusSourcesPanel}
+            />
+          </div>
         </div>
       </main>
 
       {/* Right sidebar – Sources */}
       <aside
-        className="w-72 border-l border-[#1E1E2E] bg-[#12121A] flex flex-col"
+        ref={sourcesSidebarRef}
+        className="w-72 border-l border-[#1E1E2E] bg-[#12121A] flex flex-col transition-shadow duration-300"
         data-testid="sources-sidebar"
+        id="sources-sidebar"
       >
         <div className="p-4 border-b border-[#1E1E2E]">
           <h2 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">

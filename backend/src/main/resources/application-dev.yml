@@ -2,9 +2,36 @@ spring:
   jpa:
     show-sql: true
 
+  ai:
+    mcp:
+      client:
+        enabled: true
+        type: SYNC
+        # Default Spring AI client timeout is 20s; stdio server cold start can exceed that.
+        request-timeout: 120s
+        stdio:
+          connections:
+            powerrag-tools:
+              # fetch_url (JSON responses), time, weather, Jira, GitHub, GCP Logging.
+              command: python3
+              args:
+                - mcp/powerrag_mcp_tools.py
+            boutquin-email:
+              # IMAP/SMTP: email_list, email_search, email_get, email_reply, email_send, …
+              # Config: mcp/email-accounts.json (see email-accounts.docker-stub.json).
+              command: mcp/bin/mcp-server-email
+              env:
+                EMAIL_CONFIG_FILE: mcp/email-accounts.json
+        toolcallback:
+          enabled: true
+
 logging:
   level:
     com.powerrag: DEBUG
     org.springframework.ai: DEBUG
     org.springframework.security: DEBUG
     org.hibernate.SQL: DEBUG
+
+powerrag:
+  mcp:
+    rag-enabled: true

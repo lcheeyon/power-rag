@@ -7,6 +7,7 @@ import ModelSelector, { CLOUD_MODEL_OPTIONS, MODEL_OPTIONS } from '../../compone
 // Mock the modelApi so the selector doesn't try to hit the network
 vi.mock('../../api/modelApi', () => ({
   listOllamaModels: vi.fn().mockResolvedValue([]),
+  listGeminiModels: vi.fn().mockResolvedValue([]),
 }))
 
 function renderSelector(onChange = vi.fn()) {

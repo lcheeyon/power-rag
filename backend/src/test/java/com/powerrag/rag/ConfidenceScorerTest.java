@@ -1,5 +1,6 @@
 package com.powerrag.rag;
 
+import com.powerrag.mcp.McpToolInvocationSummary;
 import com.powerrag.rag.model.RetrievedChunk;
 import com.powerrag.rag.retrieval.HybridRetriever;
 import com.powerrag.rag.scoring.ConfidenceScorer;
@@ -63,5 +64,54 @@ class ConfidenceScorerTest {
         double expected = scorer.score(List.of(chunk(topScore)));
         double actual   = scorer.score(List.of(chunk(topScore), chunk(lowScore)));
         assertThat(actual).isEqualTo(expected);
+    }
+
+    @Test
+    @DisplayName("responseConfidence lifts typical KB retrieval into a higher band vs raw RRF ratio")
+    void responseConfidence_kbCalibratedAboveRawRrf() {
+        double raw = scorer.score(List.of(chunk(MAX_RRF * 0.35)));
+        double combined = scorer.responseConfidence(raw, true, List.of());
+        assertThat(combined).isGreaterThan(raw);
+        assertThat(combined).isCloseTo(0.493, org.assertj.core.data.Offset.offset(0.02));
+        assertThat(combined).isLessThanOrEqualTo(1.0);
+    }
+
+    @Test
+    @DisplayName("responseConfidence adds bonus for successful fetch_url and GitHub tools")
+    void responseConfidence_mcpBonusesStackWithKb() {
+        double kbOnly = scorer.responseConfidence(0.5, true, List.of());
+        var inv = List.of(
+                new McpToolInvocationSummary("s", "powerrag-tools__fetch_url", true, 10L, null, null),
+                new McpToolInvocationSummary("s", "powerrag-tools__github_search_code", true, 20L, null, null));
+        double withTools = scorer.responseConfidence(0.5, true, inv);
+        assertThat(withTools).isGreaterThan(kbOnly);
+    }
+
+    @Test
+    @DisplayName("responseConfidence adds bonus for successful email_* tools (prefixed MCP connection id)")
+    void responseConfidence_emailToolBonus() {
+        double kbOnly = scorer.responseConfidence(0.5, true, List.of());
+        var inv = List.of(
+                new McpToolInvocationSummary("s", "boutquin-email__email_list", true, 5L, null, null));
+        assertThat(scorer.responseConfidence(0.5, true, inv)).isGreaterThan(kbOnly);
+    }
+
+    @Test
+    @DisplayName("responseConfidence uses MCP-only floor when KB unused but tools succeeded")
+    void responseConfidence_mcpOnlyUsesFloor() {
+        var weather = List.of(
+                new McpToolInvocationSummary("s", "powerrag-tools__get_weather", true, 5L, null, null));
+        assertThat(scorer.responseConfidence(0.0, false, weather)).isGreaterThanOrEqualTo(0.6);
+        var time = List.of(
+                new McpToolInvocationSummary("s", "powerrag-tools__get_current_time", true, 2L, null, null));
+        assertThat(scorer.responseConfidence(0.0, false, time)).isGreaterThanOrEqualTo(0.6);
+    }
+
+    @Test
+    @DisplayName("Failed MCP invocations do not add bonus")
+    void responseConfidence_failedToolsIgnored() {
+        var failed = List.of(
+                new McpToolInvocationSummary("s", "powerrag-tools__fetch_url", false, 10L, "timeout", null));
+        assertThat(scorer.responseConfidence(0.0, false, failed)).isEqualTo(0.0);
     }
 }

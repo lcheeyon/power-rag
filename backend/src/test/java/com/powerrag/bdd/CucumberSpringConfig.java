@@ -3,6 +3,7 @@ package com.powerrag.bdd;
 import com.powerrag.infrastructure.TestContainersConfig;
 import io.cucumber.spring.CucumberContextConfiguration;
 import org.springframework.ai.anthropic.AnthropicChatModel;
+import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -28,7 +29,14 @@ public class CucumberSpringConfig {
     @MockitoBean
     AnthropicChatModel anthropicChatModel;
 
-    /** Replaced with a Mockito mock so no real Ollama call is made (used by guardrail service). */
+    /**
+     * Replaced with a Mockito mock — {@code geminiPro}, {@code geminiGuard}, and other Gemini
+     * {@link org.springframework.ai.chat.client.ChatClient} beans delegate to this model.
+     */
+    @MockitoBean
+    GoogleGenAiChatModel googleGenAiChatModel;
+
+    /** Replaced with a Mockito mock so no real Ollama call is made if Ollama is on the classpath. */
     @MockitoBean
     OllamaChatModel ollamaChatModel;
 }

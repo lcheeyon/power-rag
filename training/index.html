@@ -66,6 +66,13 @@
   <nav>
     <a href="27-local-llm-models.html"><span class="topic-num">27</span> Local Open-Source LLMs</a>
   </nav>
+  <div class="sidebar-module">Module 10 — Agentic RAG &amp; Live Data</div>
+  <nav>
+    <a href="28-model-context-protocol.html"><span class="topic-num">28</span> Model Context Protocol</a>
+    <a href="29-mcp-tool-server.html"><span class="topic-num">29</span> MCP Tool Servers</a>
+    <a href="30-intent-routing.html"><span class="topic-num">30</span> Intent Routing</a>
+    <a href="31-mcp-observability.html"><span class="topic-num">31</span> Tool Observability &amp; Audit</a>
+  </nav>
 </nav>
 
 <main class="content">
@@ -351,6 +358,42 @@
             <td>27</td>
             <td><a href="27-local-llm-models.html">Local Open-Source LLMs</a></td>
             <td>Model selection for each pipeline role, hardware requirements by tier, GPU vs Apple Silicon vs CPU, recommended configurations</td>
+            <td><span class="badge-time">18 min</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Module 10 -->
+    <div class="module-section">
+      <div class="module-header">Module 10 — Agentic RAG &amp; Live Data</div>
+      <table class="module-table">
+        <thead>
+          <tr><th>#</th><th>Topic</th><th>Description</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>28</td>
+            <td><a href="28-model-context-protocol.html">Model Context Protocol</a></td>
+            <td>What MCP is, STDIO vs HTTP/SSE transports, Spring AI MCP client, tool discovery endpoint, and how tools attach to the RAG pipeline</td>
+            <td><span class="badge-time">20 min</span></td>
+          </tr>
+          <tr>
+            <td>29</td>
+            <td><a href="29-mcp-tool-server.html">MCP Tool Servers</a></td>
+            <td>Python powerrag-tools server: web fetch, time/weather, Jira, GitHub, GCP Logging; email binary server; credential management and SSRF considerations</td>
+            <td><span class="badge-time">25 min</span></td>
+          </tr>
+          <tr>
+            <td>30</td>
+            <td><a href="30-intent-routing.html">Intent Routing</a></td>
+            <td>QueryIntentClassifier: fast LLM router vs pattern-matching fallback, QueryIntent record, per-query KB/tool activation, provider-aware options</td>
+            <td><span class="badge-time">20 min</span></td>
+          </tr>
+          <tr>
+            <td>31</td>
+            <td><a href="31-mcp-observability.html">Tool Observability &amp; Audit</a></td>
+            <td>ObservingToolCallback decorator, McpInvocationRecorder thread-local buffer, JSONB audit column, API response surface, frontend amber badge, confidence adjustment</td>
             <td><span class="badge-time">18 min</span></td>
           </tr>
         </tbody>

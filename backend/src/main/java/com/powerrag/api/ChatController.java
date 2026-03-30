@@ -5,13 +5,18 @@ import com.powerrag.domain.UserRepository;
 import com.powerrag.rag.model.RagResponse;
 import com.powerrag.rag.service.RagService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import org.springframework.ai.mcp.SyncMcpToolCallbackProvider;
+import org.springframework.ai.tool.ToolCallback;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -28,16 +33,47 @@ import java.util.UUID;
  */
 @RestController
 @RequestMapping("/api/chat")
-@RequiredArgsConstructor
 public class ChatController {
 
-    private final RagService     ragService;
-    private final UserRepository userRepository;
+    private final RagService                            ragService;
+    private final UserRepository                        userRepository;
+    private final Optional<SyncMcpToolCallbackProvider> mcpToolCallbackProvider;
+
+    @Value("${powerrag.mcp.rag-enabled:false}")
+    private boolean mcpRagEnabled;
+
+    public ChatController(RagService ragService,
+                          UserRepository userRepository,
+                          Optional<SyncMcpToolCallbackProvider> mcpToolCallbackProvider) {
+        this.ragService                 = ragService;
+        this.userRepository             = userRepository;
+        this.mcpToolCallbackProvider    = mcpToolCallbackProvider;
+    }
 
     /** Retained for the existing auth-check BDD scenario (GET with JWT → not 401). */
     @GetMapping("/query")
     public ResponseEntity<Map<String, String>> queryProbe() {
         return ResponseEntity.ok(Map.of("status", "OK", "message", "Use POST for RAG queries"));
+    }
+
+    /**
+     * Lists MCP tools currently registered with the Spring AI client (e.g. fetch from {@code application-dev.yml}).
+     */
+    @GetMapping("/mcp-tools")
+    public ResponseEntity<McpToolsResponse> listMcpTools() {
+        boolean clientOk = mcpToolCallbackProvider.isPresent();
+        List<McpToolsResponse.McpToolEntry> tools = new ArrayList<>();
+        if (clientOk) {
+            ToolCallback[] callbacks = mcpToolCallbackProvider.get().getToolCallbacks();
+            if (callbacks != null) {
+                for (ToolCallback cb : callbacks) {
+                    var def = cb.getToolDefinition();
+                    String desc = def.description();
+                    tools.add(new McpToolsResponse.McpToolEntry(def.name(), desc != null ? desc : ""));
+                }
+            }
+        }
+        return ResponseEntity.ok(new McpToolsResponse(mcpRagEnabled, clientOk, List.copyOf(tools)));
     }
 
     @PostMapping("/query")
@@ -50,7 +86,7 @@ public class ChatController {
         String language  = resolveLanguage(request.language(), user);
 
         RagResponse response = ragService.query(request.question(), request.imageBase64(),
-                sessionId, user, language, request.modelProvider(), request.modelId());
+                sessionId, user, language, request.modelProvider(), request.modelId(), request.clientTimezone());
         return ResponseEntity.ok(response);
     }
 

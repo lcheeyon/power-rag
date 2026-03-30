@@ -51,10 +51,12 @@ A running instance of Power RAG is deployed on Google Cloud (Singapore region):
 | **Multi-LLM** | Claude Opus/Sonnet/Haiku, Gemini 2.5 Pro/Flash/Flash-Lite, Ollama (Qwen, DeepSeek) |
 | **Semantic Cache** | Redis-backed vector cache (cosine threshold 0.92, 24 h TTL) eliminates redundant LLM calls |
 | **Guardrails** | Input safety via **Gemini 2.5 Flash** (`gemini-2.5-flash`); output PII detection via regex + redaction |
+| **MCP Tool Integration** | Live data via Model Context Protocol: web fetch, time/weather, Jira Cloud, GitHub code search, GCP Cloud Logging, IMAP/SMTP email |
+| **Intent Routing** | Fast LLM classifier decides per-query whether to search the knowledge base and/or attach live tools — reduces unnecessary retrieval latency |
 | **Text-to-SQL** | Natural language → validated, read-only SQL against a live PostgreSQL schema |
 | **Multilingual** | English, Simplified Chinese, Traditional Chinese UI + LLM response language |
 | **Auth** | JWT-based auth with `USER` / `ADMIN` roles |
-| **Audit Log** | Every interaction persisted to PostgreSQL with model, confidence, sources, duration |
+| **Audit Log** | Every interaction persisted to PostgreSQL with model, confidence, sources, duration, and MCP tool invocation summaries (JSONB) |
 | **Feedback** | Thumbs-up/down + star ratings stored and surfaced in admin dashboard |
 | **Admin Dashboard** | Interaction history, guardrail flags, model usage metrics |
 
@@ -71,20 +73,23 @@ Browser (React 18 + Vite)
 │        │
 │        ▼
 │   RagService (Spring Boot 3.5)
-│   ┌────────────────────────────────────────────────────┐
-│   │ 1. Input Guardrail  (Gemini 2.5 Flash via Google GenAI) │
-│   │ 2. Semantic Cache   (Redis Stack / RedisVectorStore)│
-│   │ 3. Image Generation (Imagen 3 / Gemini Flash-img)  │
-│   │ 4. Hybrid Retrieval                                │
-│   │    ├─ Dense:   Qdrant vector search                │
-│   │    └─ Keyword: PostgreSQL full-text search         │
-│   │    └─ Merge:   Reciprocal Rank Fusion (k=60)       │
-│   │ 5. Context Assembly (max 24 000 chars)             │
-│   │ 6. LLM Call         (provider + model selected)    │
-│   │ 7. Output Guardrail (PII redaction)                │
-│   │ 8. Cache Store      (Redis)                        │
-│   │ 9. Audit Log        (PostgreSQL)                   │
-│   └────────────────────────────────────────────────────┘
+│   ┌────────────────────────────────────────────────────────────────┐
+│   │ 1. Input Guardrail   (Gemini 2.5 Flash via Google GenAI)      │
+│   │ 2. Semantic Cache    (Redis Stack / RedisVectorStore)          │
+│   │ 3. Image Generation  (Imagen 3 / Gemini Flash-img)            │
+│   │ 4. Intent Routing    (QueryIntentClassifier — LLM or heuristic)│
+│   │    → decides: retrieve KB? attach MCP tools?                  │
+│   │ 5. Hybrid Retrieval  (conditional on intent)                  │
+│   │    ├─ Dense:   Qdrant vector search                           │
+│   │    └─ Keyword: PostgreSQL full-text search                    │
+│   │    └─ Merge:   Reciprocal Rank Fusion (k=60)                  │
+│   │ 6. Context Assembly  (max 24 000 chars)                       │
+│   │ 7. LLM Call          (provider + model selected)              │
+│   │    └─ MCP Tools      (optional: web/Jira/GitHub/GCP/email)    │
+│   │ 8. Output Guardrail  (PII redaction)                          │
+│   │ 9. Cache Store       (Redis)                                  │
+│   │10. Audit Log         (PostgreSQL + MCP invocations JSONB)     │
+│   └────────────────────────────────────────────────────────────────┘
 │
 ├─► POST /api/sql/query
 │        │
@@ -208,19 +213,28 @@ power_rag/
 │       │   ├── parser/            # PDF, Word, Excel, PPT, Java, Image parsers
 │       │   ├── chunking/          # SlidingWindowChunkingStrategy
 │       │   └── service/           # DocumentIngestionService
+│       ├── mcp/                   # MCP observability layer
+│       │   ├── ObservingToolCallback.java    # Times + records every tool call
+│       │   ├── McpInvocationRecorder.java    # Thread-local invocation buffer
+│       │   └── McpToolInvocationSummary.java # Per-call data record
 │       ├── multilingual/          # Language detection + prompt building
 │       ├── rag/                   # Core RAG pipeline
 │       │   ├── assembly/          # ContextAssembler
+│       │   ├── intent/            # QueryIntentClassifier, QueryIntent
 │       │   ├── model/             # RagResponse, RetrievedChunk, SourceRef
 │       │   ├── retrieval/         # HybridRetriever (Qdrant + PG FTS + RRF)
 │       │   ├── scoring/           # ConfidenceScorer
 │       │   └── service/           # RagService, ImageGenerationService
 │       ├── security/              # JWT filter, service, UserDetailsService
 │       └── sql/                   # Text-to-SQL (SchemaIntrospector, TextToSqlService)
+│   ├── mcp/                       # MCP server scripts and binaries
+│   │   ├── powerrag_mcp_tools.py  # Python stdio MCP server (fetch, Jira, GitHub, GCP)
+│   │   ├── requirements.txt       # Python deps: mcp, httpx, google-auth
+│   │   └── bin/mcp-server-email   # Pre-compiled email IMAP/SMTP MCP server
 │   └── src/main/resources/
 │       ├── application.yml
-│       ├── application-dev.yml
-│       └── db/migration/          # Flyway V1–V7 SQL migrations
+│       ├── application-dev.yml    # MCP STDIO connections (dev profile)
+│       └── db/migration/          # Flyway V1–V8 SQL migrations
 │
 └── frontend/                      # React + Vite application
     ├── Dockerfile
@@ -228,7 +242,8 @@ power_rag/
     └── src/
         ├── api/                   # Axios API clients (auth, chat, documents, sql, admin)
         ├── components/            # Reusable UI components
-        │   ├── ChatWindow.tsx     # Main chat area (image paste, generation display)
+        │   ├── ChatWindow.tsx     # Main chat area (image paste, MCP badge, generation display)
+        │   ├── McpToolsPanel.tsx  # Sidebar panel listing available MCP tools
         │   ├── ModelSelector.tsx  # LLM provider/model picker
         │   ├── UploadZone.tsx     # Drag-and-drop document upload
         │   └── AdminDashboard.tsx # Admin stats + interaction log
@@ -240,6 +255,8 @@ power_rag/
         │   ├── ChatPage.tsx       # Main layout (sidebar + chat + sources)
         │   ├── SqlPage.tsx        # Text-to-SQL interface
         │   └── AdminPage.tsx
+        ├── utils/
+        │   └── mcpTools.ts        # MCP tool capability helpers (Jira detection etc.)
         └── test/                  # Vitest unit + MSW mocks + Playwright E2E
 ```
 
@@ -391,12 +408,13 @@ Navigate to `http://localhost:3000` and log in with:
 | `spring.ai.ollama.base-url` | `http://localhost:11434` | Ollama endpoint |
 | `spring.ai.ollama.chat.options.model` | `qwen2.5-coder:7b` | Default Ollama chat model |
 | `spring.ai.google.genai.embedding.text.options.model` | `gemini-embedding-001` | Embedding model for Qdrant + cache |
-| `spring.ai.google.genai.embedding.text.options.dimensions` | `768` | Must match Qdrant collection |
+| `powerrag.embedding.dimensions` | `768` | Canonical embedding width; drives Gemini embedding + Qdrant (`POWERRAG_EMBEDDING_DIMENSIONS`) |
+| `spring.ai.google.genai.embedding.text.options.dimensions` | `${powerrag.embedding.dimensions}` | Same as `powerrag.embedding.dimensions` |
 | `powerrag.guardrails.input-model-id` | `gemini-2.5-flash` | Input safety model (override with `POWERRAG_GUARDRAIL_MODEL`) |
 | `spring.ai.vectorstore.qdrant.host` | `localhost` | Qdrant host |
 | `spring.ai.vectorstore.qdrant.port` | `6334` | Qdrant gRPC port |
 | `spring.ai.vectorstore.qdrant.collection-name` | `power_rag_docs` | Qdrant collection |
-| `spring.ai.vectorstore.qdrant.dimensions` | `768` | Must match embedding output (768 for configured Gemini embeddings) |
+| `spring.ai.vectorstore.qdrant.dimensions` | `${powerrag.embedding.dimensions}` | Must match embedding output |
 | `spring.data.redis.host` | `localhost` | Redis host |
 | `powerrag.jwt.expiration-ms` | `86400000` | JWT TTL (24 h) |
 | `powerrag.ingestion.chunk-size` | `512` | Chunk size in words |
@@ -406,6 +424,8 @@ Navigate to `http://localhost:3000` and log in with:
 | `powerrag.models.cache.similarity-threshold` | `0.92` | Semantic cache cosine threshold |
 | `powerrag.models.cache.ttl-seconds` | `86400` | Cache TTL |
 | `powerrag.upload.storage-path` | `./uploads` | Document file storage |
+| `powerrag.mcp.rag-enabled` | `false` | Attach MCP tools to chat calls (requires `spring.ai.mcp.client.enabled=true` via dev profile) |
+| `powerrag.rag.intent-routing-enabled` | `true` | Fast LLM classifier to decide per-query whether to retrieve KB and/or use MCP tools |
 
 ### Environment Variables
 
@@ -413,6 +433,7 @@ Navigate to `http://localhost:3000` and log in with:
 |---|---|---|
 | `ANTHROPIC_API_KEY` | Yes (for Claude) | Anthropic API key |
 | `GOOGLE_API_KEY` | Yes (Gemini chat, **embeddings**, **guardrails**, Imagen) | Google AI Studio API key |
+| `POWERRAG_EMBEDDING_DIMENSIONS` | No | Override embedding/Qdrant vector size (default `768` for local stack) |
 | `POWERRAG_GUARDRAIL_MODEL` | No | Override input guard model (default `gemini-2.5-flash`) |
 | `JWT_SECRET` | Yes | Min 32-char JWT signing secret |
 | `PG_USER` | No (default: `powerrag`) | PostgreSQL username |
@@ -441,7 +462,8 @@ All endpoints are prefixed with `/api`. Authentication uses `Authorization: Bear
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | `GET` | `/api/chat/query` | USER | Health probe |
-| `POST` | `/api/chat/query` | USER | Full RAG query (supports images) |
+| `POST` | `/api/chat/query` | USER | Full RAG query (supports images, MCP tools, intent routing) |
+| `GET` | `/api/chat/mcp-tools` | USER | List available MCP tools and capability flags |
 
 **Request body (`POST /api/chat/query`):**
 ```json
@@ -466,7 +488,10 @@ All endpoints are prefixed with `/api`. Authentication uses `Authorization: Bear
   "interactionId": "uuid",
   "cacheHit": false,
   "error": null,
-  "generatedImageBase64": null
+  "generatedImageBase64": null,
+  "mcpInvocations": [
+    { "serverId": "powerrag-tools", "toolName": "jira_search_issues", "success": true, "durationMs": 843 }
+  ]
 }
 ```
 
@@ -530,6 +555,7 @@ The schema is managed by Flyway and applied automatically on startup.
 | `V5__feedback.sql` | Feedback schema refinements |
 | `V6__document_storage_path.sql` | `storage_path` column on `documents` |
 | `V7__grants_schema.sql` | Sample grants domain: `grant_programs`, `grant_applicants`, `grant_applications`, `grant_reviewers`, `grant_reviews`, `grant_disbursements` + seed data |
+| `V8__interaction_mcp_invocations.sql` | Adds `mcp_invocations jsonb` column to `interactions` (nullable; stores tool timing + outcome per chat turn) |
 
 ---
 
@@ -727,6 +753,7 @@ Or open the rendered course directly in your browser (opens in a new tab):
 | 7 — Production Concerns | 23–24 | JWT security, Flyway migrations |
 | 8 — Quality & Ops | 25–26 | Testing Spring AI apps, observability and logging |
 | 9 — Local AI Infrastructure | 27 | Open-source model selection, hardware requirements, Ollama configs |
+| 10 — Agentic RAG & Live Data | 28–31 | Model Context Protocol, MCP tool servers, intent routing, tool observability |
 
 Each topic page includes:
 - Concept explanation with diagrams

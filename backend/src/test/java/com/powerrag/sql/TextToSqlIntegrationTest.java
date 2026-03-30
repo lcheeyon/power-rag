@@ -4,7 +4,7 @@ import com.powerrag.infrastructure.TestContainersConfig;
 import com.powerrag.sql.exception.SqlValidationException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.anthropic.AnthropicChatModel;
+import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
@@ -24,7 +24,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * Integration test for TextToSqlService against a real PostgreSQL Testcontainer.
- * AnthropicChatModel is mocked to return fixed SQL responses.
+ * GoogleGenAiChatModel is mocked — Text-to-SQL uses the {@code geminiPro} ChatClient built from it.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
@@ -33,7 +33,7 @@ import static org.mockito.Mockito.when;
 class TextToSqlIntegrationTest {
 
     @MockitoBean
-    AnthropicChatModel anthropicChatModel;
+    GoogleGenAiChatModel googleGenAiChatModel;
 
     @Autowired
     TextToSqlService textToSqlService;
@@ -119,6 +119,6 @@ class TextToSqlIntegrationTest {
     private void mockLlmResponse(String content) {
         ChatResponse mockResponse = new ChatResponse(List.of(
                 new Generation(new AssistantMessage(content))));
-        when(anthropicChatModel.call(any(Prompt.class))).thenReturn(mockResponse);
+        when(googleGenAiChatModel.call(any(Prompt.class))).thenReturn(mockResponse);
     }
 }

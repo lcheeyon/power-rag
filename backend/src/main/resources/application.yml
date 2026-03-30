@@ -65,8 +65,8 @@ spring:
           text:
             options:
               model: gemini-embedding-001
-              # Must match spring.ai.vectorstore.qdrant.dimensions (768). API default is 3072.
-              dimensions: 768
+              # Must match spring.ai.vectorstore.qdrant.dimensions (same as powerrag.embedding.dimensions). Gemini API default is 3072 — local stack standardizes on 768.
+              dimensions: ${powerrag.embedding.dimensions:768}
 
     retry:
       max-attempts: 1        # fail-fast — GuardrailService catches and allows through
@@ -79,6 +79,13 @@ spring:
           model: qwen2.5-coder:7b
           temperature: 0.7
 
+    # MCP client (Model Context Protocol) — off by default; enable on laptop via spring.profiles.active=dev
+    mcp:
+      client:
+        enabled: false
+        toolcallback:
+          enabled: false
+
     # Qdrant vector store (knowledge base)
     vectorstore:
       qdrant:
@@ -86,7 +93,7 @@ spring:
         port: ${QDRANT_PORT:6334}
         collection-name: power_rag_docs
         initialize-schema: true
-        dimensions: 768
+        dimensions: ${powerrag.embedding.dimensions:768}
 
 # ── Actuator ─────────────────────────────────────────────────
 management:
@@ -110,6 +117,10 @@ info:
 
 # ── Application Properties ────────────────────────────────────
 powerrag:
+  # Single source of truth for gemini-embedding-001 output size, Qdrant collection, and Redis semantic-cache index (via EmbeddingModel).
+  embedding:
+    dimensions: ${POWERRAG_EMBEDDING_DIMENSIONS:768}
+
   jwt:
     secret: ${JWT_SECRET:change-me-in-production-min-32-chars!!}
     expiration-ms: 86400000   # 24h
@@ -122,6 +133,10 @@ powerrag:
     # Gemini 2.5 Flash — fast multimodal model for input safety (Google AI Studio / Gemini API).
     input-model-id: ${POWERRAG_GUARDRAIL_MODEL:gemini-2.5-flash}
 
+  mcp:
+    # Attach MCP tools to the main RAG ChatClient when spring.ai.mcp.client.enabled=true (see application-dev.yml).
+    rag-enabled: false
+
   ingestion:
     chunk-size: 512
     chunk-overlap: 64
@@ -129,6 +144,19 @@ powerrag:
   rag:
     top-k: 10
     max-context-chars: 24000
+    # One small LLM call to decide KB retrieval vs general knowledge, and whether MCP tools (e.g. fetch) are needed.
+    intent-routing-enabled: true
+
+  # Native image generation (Google Gemini API — Nano Banana Pro / Flash Image + Imagen fallbacks).
+  image-generation:
+    gemini-native-models:
+      - gemini-3-pro-image-preview
+      - gemini-3.1-flash-image-preview
+      - gemini-2.5-flash-image
+    imagen-model: imagen-3.0-generate-002
+    legacy-gemini-model: gemini-2.0-flash-preview-image-generation
+    # When false, failed image generation does not fall through to text-only models (avoids "I cannot generate images").
+    fallback-to-llm-on-failure: false
 
   models:
     claude:

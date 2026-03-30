@@ -62,6 +62,11 @@ public class Interaction {
     @Column(columnDefinition = "jsonb")
     private List<String> topChunkIds;
 
+    /** MCP tool calls during the LLM turn (null if none). */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
+    private List<Map<String, Object>> mcpInvocations;
+
     @Column(nullable = false)
     @Builder.Default
     private boolean guardrailFlag = false;

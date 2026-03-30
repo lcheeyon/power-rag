@@ -14,6 +14,7 @@ import redis.clients.jedis.JedisPooled;
 /**
  * Configures the Redis Stack vector store used for semantic caching.
  * Qdrant is configured via application.yml auto-configuration for the knowledge base.
+ * Vector width for both follows {@code powerrag.embedding.dimensions} (default 768) via the shared {@link EmbeddingModel}.
  */
 @Configuration
 public class VectorStoreConfig {

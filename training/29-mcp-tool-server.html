@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Tool Servers — Spring AI &amp; RAG Course</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <a href="index.html">Spring AI &amp; RAG Course<span>Power RAG Reference Project</span></a>
+  </div>
+  <div class="sidebar-module">Module 1 — Foundations</div>
+  <nav>
+    <a href="01-what-is-rag.html"><span class="topic-num">01</span> What is RAG?</a>
+    <a href="02-spring-ai-overview.html"><span class="topic-num">02</span> Spring AI Overview</a>
+    <a href="03-project-setup.html"><span class="topic-num">03</span> Project Setup</a>
+  </nav>
+  <div class="sidebar-module">Module 2 — LLM Integration</div>
+  <nav>
+    <a href="04-chatclient-basics.html"><span class="topic-num">04</span> ChatClient Basics</a>
+    <a href="05-multiple-llm-providers.html"><span class="topic-num">05</span> Multiple LLM Providers</a>
+    <a href="06-dynamic-model-routing.html"><span class="topic-num">06</span> Dynamic Model Routing</a>
+    <a href="07-system-prompts.html"><span class="topic-num">07</span> System Prompts &amp; Templates</a>
+  </nav>
+  <div class="sidebar-module">Module 3 — Document Ingestion</div>
+  <nav>
+    <a href="08-document-parsing.html"><span class="topic-num">08</span> Document Parsing</a>
+    <a href="09-chunking-strategies.html"><span class="topic-num">09</span> Chunking Strategies</a>
+    <a href="10-embeddings.html"><span class="topic-num">10</span> Embeddings</a>
+  </nav>
+  <div class="sidebar-module">Module 4 — Retrieval</div>
+  <nav>
+    <a href="11-vector-stores.html"><span class="topic-num">11</span> Vector Stores</a>
+    <a href="12-similarity-search.html"><span class="topic-num">12</span> Similarity Search</a>
+    <a href="13-keyword-search-fts.html"><span class="topic-num">13</span> Keyword Search (FTS)</a>
+    <a href="14-reciprocal-rank-fusion.html"><span class="topic-num">14</span> Reciprocal Rank Fusion</a>
+    <a href="15-context-assembly.html"><span class="topic-num">15</span> Context Assembly</a>
+    <a href="16-confidence-scoring.html"><span class="topic-num">16</span> Confidence Scoring</a>
+  </nav>
+  <div class="sidebar-module">Module 5 — The Full Pipeline</div>
+  <nav>
+    <a href="17-full-rag-pipeline.html"><span class="topic-num">17</span> The Full RAG Pipeline</a>
+    <a href="18-semantic-caching.html"><span class="topic-num">18</span> Semantic Caching</a>
+    <a href="19-guardrails.html"><span class="topic-num">19</span> Guardrails</a>
+  </nav>
+  <div class="sidebar-module">Module 6 — Advanced Features</div>
+  <nav>
+    <a href="20-multimodal-image-input.html"><span class="topic-num">20</span> Multimodal Image Input</a>
+    <a href="21-image-generation.html"><span class="topic-num">21</span> Image Generation</a>
+    <a href="22-text-to-sql.html"><span class="topic-num">22</span> Text-to-SQL</a>
+  </nav>
+  <div class="sidebar-module">Module 7 — Production Concerns</div>
+  <nav>
+    <a href="23-security-jwt.html"><span class="topic-num">23</span> Security &amp; JWT</a>
+    <a href="24-database-migrations.html"><span class="topic-num">24</span> Database Migrations</a>
+  </nav>
+  <div class="sidebar-module">Module 8 — Quality &amp; Ops</div>
+  <nav>
+    <a href="25-testing-spring-ai.html"><span class="topic-num">25</span> Testing Spring AI Apps</a>
+    <a href="26-observability-logging.html"><span class="topic-num">26</span> Observability &amp; Logging</a>
+  </nav>
+  <div class="sidebar-module">Module 9 — Local AI Infrastructure</div>
+  <nav>
+    <a href="27-local-llm-models.html"><span class="topic-num">27</span> Local Open-Source LLMs</a>
+  </nav>
+  <div class="sidebar-module">Module 10 — Agentic RAG &amp; Live Data</div>
+  <nav>
+    <a href="28-model-context-protocol.html"><span class="topic-num">28</span> Model Context Protocol</a>
+    <a href="29-mcp-tool-server.html" class="active"><span class="topic-num">29</span> MCP Tool Servers</a>
+    <a href="30-intent-routing.html"><span class="topic-num">30</span> Intent Routing</a>
+    <a href="31-mcp-observability.html"><span class="topic-num">31</span> Tool Observability &amp; Audit</a>
+  </nav>
+</nav>
+
+<main class="content">
+  <div class="content-inner">
+    <div class="breadcrumb">
+      <a href="index.html">Spring AI &amp; RAG Course</a>
+      <span>›</span> Module 10 — Agentic RAG &amp; Live Data
+      <span>›</span> MCP Tool Servers
+    </div>
+
+    <h1>MCP Tool Servers</h1>
+    <div class="meta">Module 10 · ~25 min read</div>
+
+    <p>
+      Power RAG ships two MCP servers: a custom Python server that covers web fetching, time/weather,
+      Jira, GitHub, and Google Cloud Logging; and a pre-compiled email server for IMAP/SMTP operations.
+      This topic walks through how each is implemented, configured, and secured.
+    </p>
+
+    <h2>Server Inventory</h2>
+
+    <table>
+      <thead>
+        <tr><th>Server</th><th>Type</th><th>Location</th><th>Tools</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>powerrag-tools</code></td>
+          <td>Python stdio</td>
+          <td><code>backend/mcp/powerrag_mcp_tools.py</code></td>
+          <td>fetch_url, get_current_time, get_weather, jira_*, github_*, gcp_logging_query</td>
+        </tr>
+        <tr>
+          <td><code>boutquin-email</code></td>
+          <td>Binary stdio</td>
+          <td><code>backend/mcp/bin/mcp-server-email</code></td>
+          <td>email_list, email_search, email_get, email_reply, email_send, email_draft_create</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>The Python MCP Server</h2>
+
+    <p>
+      The Python server is a single file that uses the <code>mcp</code> SDK to declare tools and handle
+      JSON-RPC calls over stdin/stdout. Spring AI spawns it as a child process; no separate port or
+      service is needed in development.
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        backend/mcp/requirements.txt — Python dependencies
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/mcp/requirements.txt" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>mcp&gt;=1.2.0
+httpx&gt;=0.27.0
+google-auth[requests]&gt;=2.29.0</code></pre>
+    </div>
+
+    <div class="tip">
+      <strong>Tip:</strong> Install dependencies once: <code>pip install -r backend/mcp/requirements.txt</code>.
+      The Spring AI dev-profile auto-starts the server when the backend starts, so you never need to run the
+      Python script directly.
+    </div>
+
+    <h2>Tool: fetch_url</h2>
+    <p>
+      The most general-purpose tool. It fetches any HTTP or HTTPS URL and returns structured JSON that
+      the LLM can read directly. It includes smart content extraction: JSON responses are pretty-printed,
+      HTML is stripped to plain text, and errors produce a structured <code>{"ok": false, "error": "..."}</code>
+      object so the LLM can handle failures gracefully rather than parsing a raw exception.
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">fetch_url — response shape (JSON returned to LLM)</div>
+      <pre><code>{
+  "ok": true,
+  "url": "https://example.com/data.json",
+  "status_code": 200,
+  "content_type": "application/json",
+  "text": "{ \"key\": \"value\" }"
+}
+
+// On failure:
+{
+  "ok": false,
+  "url": "https://example.com/missing",
+  "status_code": 404,
+  "error": "Not Found",
+  "hint": "Try encoding special characters in the URL path"
+}</code></pre>
+    </div>
+
+    <div class="concept-box">
+      <strong>Key concept:</strong> Always return structured JSON from tool functions rather than plain
+      text strings. The LLM can parse JSON fields reliably; it cannot reliably extract information from
+      prose error messages. A well-structured error payload lets the model decide whether to retry,
+      rephrase, or report the failure to the user.
+    </div>
+
+    <h2>Tools: get_current_time &amp; get_weather</h2>
+    <p>
+      Time and weather are the simplest live-data cases: they have no API key requirement and are pure
+      lookups with no side effects.
+    </p>
+
+    <table>
+      <thead>
+        <tr><th>Tool</th><th>Parameters</th><th>API used</th><th>Key required?</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>get_current_time</code></td>
+          <td><code>timezone</code> (IANA, e.g. <code>Asia/Singapore</code>)</td>
+          <td>Python <code>datetime</code> + <code>zoneinfo</code></td>
+          <td>No</td>
+        </tr>
+        <tr>
+          <td><code>get_weather</code></td>
+          <td><code>location</code>, <code>units</code> (metric/imperial)</td>
+          <td>Open-Meteo (free, no key needed)</td>
+          <td>No</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Jira Cloud Tools</h2>
+    <p>
+      Two Jira tools cover the most common support-desk workflows: searching issues with JQL and loading
+      a single issue with its comments.
+    </p>
+
+    <table>
+      <thead>
+        <tr><th>Tool</th><th>Key parameters</th><th>What it returns</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>jira_search_issues</code></td>
+          <td><code>jql</code> (default: <code>project = KAN ORDER BY created DESC</code>), <code>max_results</code></td>
+          <td>Issue keys, summaries, statuses, assignees as JSON array</td>
+        </tr>
+        <tr>
+          <td><code>jira_get_issue</code></td>
+          <td><code>issue_key</code> (e.g. <code>KAN-5</code>)</td>
+          <td>Full issue: description, status, priority, reporter, comments</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>Credentials are read from environment variables at server startup:</p>
+
+    <div class="code-block">
+      <div class="code-header">Environment variables for Jira tools</div>
+      <pre><code># Required
+JIRA_CLOUD_EMAIL=you@example.com
+JIRA_CLOUD_API_TOKEN=your-atlassian-api-token
+
+# Optional (defaults to your-domain.atlassian.net)
+JIRA_CLOUD_BASE_URL=https://your-domain.atlassian.net</code></pre>
+    </div>
+
+    <p>
+      The Jira output includes a <code>presentation_hint</code> field that instructs the LLM to format
+      issue lists with one issue per line — preventing the model from accidentally concatenating issue
+      keys (e.g. writing <code>KAN-5KAN-4</code> instead of <code>KAN-5, KAN-4</code>).
+    </p>
+
+    <h2>GitHub Tools</h2>
+
+    <table>
+      <thead>
+        <tr><th>Tool</th><th>Key parameters</th><th>What it returns</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>github_search_code</code></td>
+          <td><code>query</code> (GitHub code search syntax), <code>per_page</code></td>
+          <td>File paths, repository names, and code snippet previews</td>
+        </tr>
+        <tr>
+          <td><code>github_get_repository_content</code></td>
+          <td><code>owner</code>, <code>repo</code>, <code>path</code>, <code>ref</code> (branch/SHA)</td>
+          <td>File contents (decoded from base64) or directory listing</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="code-block">
+      <div class="code-header">Environment variable for GitHub tools</div>
+      <pre><code># Optional — provides higher rate limits and access to private repos
+GITHUB_TOKEN=ghp_your_personal_access_token</code></pre>
+    </div>
+
+    <p>
+      Without a token the GitHub API allows about 60 unauthenticated requests per hour. For development
+      on a private repo you will need a personal access token with <code>repo</code> scope.
+    </p>
+
+    <h2>Google Cloud Logging Tool</h2>
+    <p>
+      The <code>gcp_logging_query</code> tool queries Cloud Logging using the same filter syntax as the
+      Google Cloud Console Logs Explorer. This lets users ask natural-language questions about production
+      log data directly in the chat interface.
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">Example Cloud Logging filter (LLM constructs this from user question)</div>
+      <pre><code>resource.type="cloud_run_revision"
+severity&gt;=ERROR
+timestamp&gt;="2026-03-30T00:00:00Z"</code></pre>
+    </div>
+
+    <div class="code-block">
+      <div class="code-header">Environment variables for GCP Logging</div>
+      <pre><code># One of:
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account-key.json
+# or Application Default Credentials (gcloud auth application-default login)
+
+GCP_PROJECT_ID=your-gcp-project-id</code></pre>
+    </div>
+
+    <h2>Email Server (boutquin-email)</h2>
+    <p>
+      The email server is a pre-compiled binary (available for macOS arm64, Linux amd64) that implements
+      the MCP protocol over IMAP/SMTP. It requires an <code>email-accounts.json</code> configuration file
+      that maps account names to connection details.
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">backend/mcp/email-accounts.docker-stub.json — example stub structure</div>
+      <pre><code>{
+  "accounts": [
+    {
+      "name": "work",
+      "imap": {
+        "host": "imap.gmail.com",
+        "port": 993,
+        "username": "you@gmail.com",
+        "password": "app-specific-password"
+      },
+      "smtp": {
+        "host": "smtp.gmail.com",
+        "port": 587,
+        "username": "you@gmail.com",
+        "password": "app-specific-password"
+      }
+    }
+  ]
+}</code></pre>
+    </div>
+
+    <p>
+      The email tools are deliberately not enabled by default in the stub configuration. Copy and rename
+      <code>email-accounts.docker-stub.json</code> to <code>email-accounts.json</code> and fill in real
+      credentials to enable them.
+    </p>
+
+    <h2>Tool Output Normalisation</h2>
+    <p>
+      Spring AI's Java MCP bridge occasionally wraps tool output in a <code>TextContent</code> object
+      whose <code>toString()</code> produces a string like:
+    </p>
+    <p>
+      <code>TextContent[annotations=null, text={...actual JSON...}, meta=null]</code>
+    </p>
+    <p>
+      If this string is handed to a Gemini model as a tool result, Gemini rejects it with
+      <em>"Failed to parse JSON"</em>. <code>ObservingToolCallback</code> detects and strips this wrapper
+      before the string reaches the model:
+    </p>
+
+    <div class="code-block">
+      <div class="code-header">
+        backend/src/main/java/com/powerrag/mcp/ObservingToolCallback.java — normalizeMcpToolOutput
+        <a href="https://github.com/lcheeyon/power-rag/blob/main/backend/src/main/java/com/powerrag/mcp/ObservingToolCallback.java" target="_blank" class="source-link">View source ↗</a>
+      </div>
+      <pre><code>static String normalizeMcpToolOutput(String out) {
+    if (out == null || out.isEmpty()) return out;
+    String t = out.strip();
+    if (!t.startsWith("TextContent[")) return out;   // most calls take this path
+    int te = t.indexOf("text=");
+    if (te &lt; 0) return out;
+    int valueStart = te + "text=".length();
+    int meta = t.lastIndexOf(", meta=");
+    if (meta &lt; valueStart) return out;
+    return t.substring(valueStart, meta);            // extracted JSON payload
+}</code></pre>
+    </div>
+
+    <div class="concept-box">
+      <strong>Key concept:</strong> Normalisation happens inside <code>ObservingToolCallback.invoke()</code>
+      — immediately after the raw output is received from the delegate, before it is recorded or returned to
+      the model. This means all downstream code (the LLM, the invocation recorder, the audit log) always
+      sees clean JSON.
+    </div>
+
+    <h2>Security Model</h2>
+    <p>
+      All tool calls run in the backend process with server-side credentials. No end-user tokens are ever
+      exposed in the browser. The trust boundary is the Spring Security JWT layer — authenticated users
+      can trigger tool calls, but cannot directly configure or bypass credential resolution.
+    </p>
+
+    <table>
+      <thead>
+        <tr><th>Resource</th><th>Credential location</th><th>Scope</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Jira Cloud</td>
+          <td>Environment variables on backend container</td>
+          <td>Read all issues in the configured project</td>
+        </tr>
+        <tr>
+          <td>GitHub</td>
+          <td>Optional env var (<code>GITHUB_TOKEN</code>)</td>
+          <td>Public repos without token; <code>repo</code> scope for private</td>
+        </tr>
+        <tr>
+          <td>GCP Logging</td>
+          <td>ADC or <code>GOOGLE_APPLICATION_CREDENTIALS</code> file</td>
+          <td>Logging read on the configured project</td>
+        </tr>
+        <tr>
+          <td>Email</td>
+          <td><code>email-accounts.json</code> (not committed)</td>
+          <td>IMAP read + SMTP send for the configured account</td>
+        </tr>
+        <tr>
+          <td>Web URLs</td>
+          <td>None (public HTTP)</td>
+          <td>Any public URL; no intranet access by default</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="warning">
+      <strong>Warning:</strong> The <code>fetch_url</code> tool can reach any URL accessible from the
+      backend host, including internal services on the same network. In production, apply network egress
+      rules or an allowlist to prevent server-side request forgery (SSRF) via the chat interface.
+    </div>
+
+    <div class="page-nav">
+      <a href="28-model-context-protocol.html" class="btn-nav">← Previous</a>
+      <a href="30-intent-routing.html" class="btn-nav">Next →</a>
+    </div>
+
+  </div>
+</main>
+
+</body>
+</html>

@@ -91,4 +91,32 @@ class MultilingualPromptBuilderTest {
         String msg = builder.buildUserMessage("Test question", null, "en");
         assertThat(msg).contains("Test question");
     }
+
+    @Test
+    @DisplayName("Browser timezone hint is injected for MCP get_current_time")
+    void buildUserMessage_includesClientTimezoneHint() {
+        String msg = builder.buildUserMessage(
+                "What time is it?",
+                "",
+                "en",
+                false,
+                false,
+                "America/Los_Angeles");
+        assertThat(msg).contains("America/Los_Angeles");
+        assertThat(msg).contains("get_current_time");
+    }
+
+    @Test
+    @DisplayName("Unsafe clientTimezone values are ignored")
+    void buildUserMessage_rejectsUnsafeTimezone() {
+        String msg = builder.buildUserMessage(
+                "What time?",
+                "",
+                "en",
+                false,
+                false,
+                "Europe/Paris; DROP TABLE--");
+        assertThat(msg).doesNotContain("DROP");
+        assertThat(msg).doesNotContain("browser timezone");
+    }
 }

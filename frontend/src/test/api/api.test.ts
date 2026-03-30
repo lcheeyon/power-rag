@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { login }                                  from '../../api/authApi'
-import { sendQuery }                              from '../../api/chatApi'
+import { sendQuery, fetchMcpTools }               from '../../api/chatApi'
 import { listInteractions, getInteractionFeedback } from '../../api/adminApi'
 import { listDocuments, uploadDocument, deleteDocument } from '../../api/documentApi'
 import { apiClient }                              from '../../api/client'
@@ -28,13 +28,22 @@ describe('chatApi', () => {
 
   it('sendQuery returns an answer', async () => {
     const result = await sendQuery({
-      query:         'What is RAG?',
+      question:      'What is RAG?',
       modelProvider: 'ANTHROPIC',
       modelId:       'claude-sonnet-4-6',
     })
     expect(result.answer).toContain('Mock answer')
     expect(typeof result.confidence).toBe('number')
     expect(Array.isArray(result.sources)).toBe(true)
+  })
+
+  it('fetchMcpTools returns capabilities and tool list', async () => {
+    const result = await fetchMcpTools()
+    expect(result.ragMcpEnabled).toBe(true)
+    expect(result.mcpClientAvailable).toBe(true)
+    expect(result.tools.length).toBeGreaterThanOrEqual(1)
+    expect(result.tools.some(t => t.name.includes('fetch_url'))).toBe(true)
+    expect(result.tools.some(t => /jira/i.test(t.name))).toBe(true)
   })
 })
 

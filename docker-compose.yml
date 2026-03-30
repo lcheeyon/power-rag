@@ -36,7 +36,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # ── Qdrant Vector Database ──────────────────────────────────────────────────
+  # ── Qdrant Vector Database (collection power_rag_docs uses vector size from POWERRAG_EMBEDDING_DIMENSIONS / default 768) ─
   qdrant:
     image: qdrant/qdrant:v1.13.4
     container_name: powerrag-qdrant
@@ -95,10 +95,22 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       QDRANT_HOST: qdrant
       QDRANT_PORT: 6334
+      # Local stack: gemini-embedding-001 + Qdrant + Redis cache all use 768 (see powerrag.embedding.dimensions).
+      POWERRAG_EMBEDDING_DIMENSIONS: "768"
       OLLAMA_BASE_URL: http://ollama:11434
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production-min-32-chars!!}
+      # Optional — Jira MCP tools (jira_search_issues, jira_get_issue); default site is powerrag.atlassian.net
+      JIRA_CLOUD_BASE_URL: ${JIRA_CLOUD_BASE_URL:-https://powerrag.atlassian.net}
+      JIRA_CLOUD_EMAIL: ${JIRA_CLOUD_EMAIL:-}
+      JIRA_CLOUD_API_TOKEN: ${JIRA_CLOUD_API_TOKEN:-}
+      # Optional MCP: GitHub (defaults target https://github.com/lcheeyon/power-rag) + GCP Logging
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITHUB_API_URL: ${GITHUB_API_URL:-https://api.github.com}
+      GITHUB_DEFAULT_OWNER: ${GITHUB_DEFAULT_OWNER:-lcheeyon}
+      GITHUB_DEFAULT_REPO: ${GITHUB_DEFAULT_REPO:-power-rag}
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
     ports:
       - "8080:8080"
     depends_on:
@@ -112,9 +124,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
-      interval: 30s
+      interval: 15s
       timeout: 10s
-      retries: 5
+      retries: 8
+      start_period: 120s
 
   # ── React Frontend ──────────────────────────────────────────────────────────
   frontend:
@@ -125,10 +138,12 @@ services:
     restart: unless-stopped
     ports:
       - "3000:80"
+    # Used only if you run Vite inside a dev container; the production image proxies /api via nginx → backend.
     environment:
       VITE_API_BASE_URL: http://localhost:8080
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
 volumes:
   pg_data:

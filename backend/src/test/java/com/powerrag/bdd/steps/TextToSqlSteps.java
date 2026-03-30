@@ -6,7 +6,7 @@ import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 import io.restassured.RestAssured;
 import io.restassured.response.Response;
-import org.springframework.ai.anthropic.AnthropicChatModel;
+import org.springframework.ai.google.genai.GoogleGenAiChatModel;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
@@ -30,7 +30,7 @@ public class TextToSqlSteps {
     private int port;
 
     @Autowired
-    private AnthropicChatModel anthropicChatModel;
+    private GoogleGenAiChatModel googleGenAiChatModel;
 
     private final HealthCheckSteps healthCheckSteps;
 
@@ -46,7 +46,7 @@ public class TextToSqlSteps {
     public void theSqlLlmWillReturn(String content) {
         ChatResponse mockResponse = new ChatResponse(List.of(
                 new Generation(new AssistantMessage(content))));
-        when(anthropicChatModel.call(any(Prompt.class))).thenReturn(mockResponse);
+        when(googleGenAiChatModel.call(any(Prompt.class))).thenReturn(mockResponse);
     }
 
     // ── When ───────────────────────────────────────────────────────────────
